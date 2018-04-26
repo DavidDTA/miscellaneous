@@ -1,0 +1,104 @@
+#! /usr/local/bin/python3
+
+import argparse
+import math
+import random
+import signal
+import subprocess
+import sys
+import threading
+import time
+
+VOICE = random.choice(['Daniel', 'Fiona', 'Karen', 'Samantha', 'Tessa'])
+
+DURATION = 10
+
+def say(message):
+    def target():
+        subprocess.run(['say', '-v', VOICE, '[[volm 0.5]]', message])
+    threading.Thread(target=target).start()
+
+def reminder(end):
+    remaining = max(math.ceil(end - time.time()), 0)
+    hours = int(remaining / 3600)
+    minutes = int(remaining % 3600 / 60)
+    seconds = int(remaining % 60)
+    reminder = ''
+    if hours:
+        reminder += '{0} hours '.format(hours)
+    if minutes:
+        reminder += '{0} minutes '.format(minutes)
+    if seconds:
+        reminder += '{0} seconds '.format(seconds)
+    if reminder:
+        return reminder + 'remaining'
+    else:
+        return 'Your time is up'
+
+class PauseException(Exception):
+        pass
+
+class StopException(Exception):
+        pass
+
+def signal_handler(signum, frame):
+    raise PauseException()
+
+def signal_handler2(signum, frame):
+    raise StopException()
+
+if __name__ == '__main__':
+    try:
+        signal.signal(signal.SIGTSTP, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler2)
+        parser = argparse.ArgumentParser(description='Count down the time.')
+        parser.add_argument('duration', type=int)
+        args = parser.parse_args()
+        start = time.time()
+        end = start + args.duration * 60
+        paused = None
+        said_finished = False
+        last_say = None
+        while True:
+            try:
+                now = time.time()
+                print(chr(27) + '[2J')
+                if paused is None:
+                    if now < end:
+                        left = end - now
+                        hours = int(math.ceil(left) / 3600)
+                        minutes = int(math.ceil(left) % 3600 / 60)
+                        seconds = int(math.ceil(left) % 60)
+                        if hours > 0:
+                            print(hours, end=':')
+                        if hours > 0:
+                            print('{0:02d}'.format(minutes), end=':')
+                        elif minutes > 0:
+                            print(minutes, end=':')
+                        print('{0:02d}'.format(seconds))
+                        if last_say is None or now - last_say > 300:
+                            last_say = now
+                            say(reminder(end))
+                        time.sleep(left % 1)
+                    else:
+                        print('Your time is up!')
+                        if not said_finished:
+                            said_finished = True
+                            say('Your time is up!')
+                        while True:
+                            print('\a', end='', flush=True)
+                            time.sleep(5)
+                else:
+                    print('Paused')
+                    say('Paused')
+                    while True:
+                        time.sleep(3600)
+            except PauseException:
+                if paused is None:
+                    paused = time.time()
+                    last_say = None
+                else:
+                    end = time.time() + (end - paused)
+                    paused = None
+    except StopException:
+        pass
