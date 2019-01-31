@@ -14,8 +14,11 @@ VOICE = random.choice(['Daniel', 'Fiona', 'Karen', 'Samantha', 'Tessa'])
 DURATION = 10
 
 def say(message):
+    spawn_subprocess('say', '-v', VOICE, '[[volm 0.5]]', message)
+
+def spawn_subprocess(*args):
     def target():
-        subprocess.run(['say', '-v', VOICE, '[[volm 0.5]]', message])
+        subprocess.run(args)
     threading.Thread(target=target).start()
 
 def reminder(end):
@@ -62,7 +65,6 @@ if __name__ == '__main__':
         while True:
             try:
                 now = time.time()
-                print(chr(27) + '[2J')
                 if paused is None:
                     if now < end:
                         left = end - now
@@ -81,13 +83,12 @@ if __name__ == '__main__':
                             say(reminder(end))
                         time.sleep(left % 1)
                     else:
-                        print('Your time is up!')
                         if not said_finished:
                             said_finished = True
                             say('Your time is up!')
                         while True:
-                            print('\a', end='', flush=True)
-                            time.sleep(5)
+                            spawn_subprocess('osascript', '-e', 'beep')
+                            time.sleep(1.5)
                 else:
                     print('Paused')
                     say('Paused')
