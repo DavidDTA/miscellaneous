@@ -64,6 +64,7 @@ if __name__ == '__main__':
         while True:
             try:
                 now = time.time()
+                print('\x1b[2K', end='\r')
                 if paused is None:
                     if now < end:
                         left = end - now
