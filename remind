@@ -21,23 +21,6 @@ def spawn_subprocess(*args):
         subprocess.run(args)
     threading.Thread(target=target).start()
 
-def reminder(end):
-    remaining = max(math.ceil(end - time.time()), 0)
-    hours = int(remaining / 3600)
-    minutes = int(remaining % 3600 / 60)
-    seconds = int(remaining % 60)
-    reminder = ''
-    if hours:
-        reminder += '{0} hours '.format(hours)
-    if minutes:
-        reminder += '{0} minutes '.format(minutes)
-    if seconds:
-        reminder += '{0} seconds '.format(seconds)
-    if reminder:
-        return reminder + 'remaining'
-    else:
-        return 'Your time is up'
-
 class PauseException(Exception):
         pass
 
@@ -78,12 +61,10 @@ if __name__ == '__main__':
                         elif minutes > 0:
                             print(minutes, end=':')
                         print('{0:02d}'.format(seconds))
-                        say(reminder(end))
                         time.sleep(left)
                     else:
                         if not said_finished:
                             said_finished = True
-                            say('Your time is up!')
                         while True:
                             spawn_subprocess('osascript', '-e', 'beep')
                             time.sleep(1.5)
