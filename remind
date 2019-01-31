@@ -61,7 +61,6 @@ if __name__ == '__main__':
         end = start + args.duration * 60
         paused = None
         said_finished = False
-        last_say = None
         while True:
             try:
                 now = time.time()
@@ -78,10 +77,8 @@ if __name__ == '__main__':
                         elif minutes > 0:
                             print(minutes, end=':')
                         print('{0:02d}'.format(seconds))
-                        if last_say is None or now - last_say > 300:
-                            last_say = now
-                            say(reminder(end))
-                        time.sleep(left % 1)
+                        say(reminder(end))
+                        time.sleep(left)
                     else:
                         if not said_finished:
                             said_finished = True
@@ -91,13 +88,11 @@ if __name__ == '__main__':
                             time.sleep(1.5)
                 else:
                     print('Paused')
-                    say('Paused')
                     while True:
                         time.sleep(3600)
             except PauseException:
                 if paused is None:
                     paused = time.time()
-                    last_say = None
                 else:
                     end = time.time() + (end - paused)
                     paused = None
