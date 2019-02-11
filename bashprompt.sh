@@ -7,18 +7,18 @@ PS1='$(
     echo -ne "\001\x1b[0m\002"
   }
   if $(git status >/dev/null 2>/dev/null); then
+    remotebranch="origin/master"
     root="$(git rev-parse --show-toplevel)"
     repo="${root##*/}"
     path="${PWD:${#root}}"
     path=${path/#\//>}
     commit=$(git rev-parse HEAD | tr -d "\n")
-    mergebase=$(git merge-base origin/master $commit | tr -d "\n")
+    mergebase=$(git merge-base $remotebranch $commit | tr -d "\n")
     mergecount=$(git rev-list ${mergebase}..${commit} --count | tr -d "\n")
     echo -ne "["
     color "1;32m" "$repo"
     echo -ne "]"
-    color "1;36m" "($(git show-ref | grep --color=never "^$commit" | grep -v --color=never "/HEAD$" | sed "s#^[^ ]* refs/##" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //"))"
-    color "1;36m" "(+$mergecount)"
+    color "1;36m" "($(git show-ref | grep --color=never "^$commit" | grep -v --color=never "/HEAD$" | sed "s#^[^ ]* refs/##" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //"); $remotebranch+$mergecount)"
     echo -ne "$path"
     if [[ ! -z "$(git stash list)" ]]; then
       color "1;33m" '\\*'
