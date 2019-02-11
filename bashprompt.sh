@@ -12,10 +12,13 @@ PS1='$(
     path="${PWD:${#root}}"
     path=${path/#\//>}
     commit=$(git rev-parse HEAD | tr -d "\n")
+    mergebase=$(git merge-base origin/master $commit | tr -d "\n")
+    mergecount=$(git rev-list ${mergebase}..${commit} --count | tr -d "\n")
     echo -ne "["
     color "1;32m" "$repo"
     echo -ne "]"
     color "1;36m" "($(git show-ref | grep --color=never "^$commit" | grep -v --color=never "/HEAD$" | sed "s#^[^ ]* refs/##" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //"))"
+    color "1;36m" "(+$mergecount)"
     echo -ne "$path"
     if [[ ! -z "$(git stash list)" ]]; then
       color "1;33m" '\\*'
