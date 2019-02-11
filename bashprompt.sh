@@ -18,7 +18,7 @@ PS1='$(
     echo -ne "["
     color "1;32m" "$repo"
     echo -ne "]"
-    color "1;36m" "($(git show-ref | grep --color=never "^$commit" | grep -v --color=never "/HEAD$" | sed "s#^[^ ]* refs/##" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //"); $remotebranch+$mergecount)"
+    color "1;36m" "($(git show-ref | grep --color=never "^$commit" | grep -v --color=never "/HEAD$" | sed "s#^[^ ]* refs/##" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //"); +$mergecount)"
     echo -ne "$path"
     if [[ ! -z "$(git stash list)" ]]; then
       color "1;33m" '\\*'
