@@ -11,10 +11,11 @@ PS1='$(
     repo="${root##*/}"
     path="${PWD:${#root}}"
     path=${path/#\//>}
+    commit=$(git rev-parse HEAD | tr -d "\n")
     echo -ne "["
     color "1;32m" "$repo"
     echo -ne "]"
-    color "1;36m" "$(git branch | grep --color=never '^[*]' | sed 's/^..//')"
+    color "1;36m" "($(git show-ref | grep --color=never "^$commit" | grep -v --color=never "/HEAD$" | sed "s#^[^ ]* refs/##" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //"))"
     echo -ne "$path"
     if [[ ! -z "$(git stash list)" ]]; then
       color "1;33m" '\\*'
