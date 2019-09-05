@@ -20,7 +20,11 @@ PS1='$(
     echo -ne "]"
     color "1;36m" "($(git show-ref | grep --color=never "^$commit" | sed "s#^[^ ]* ##" | grep -v --color=never "^refs/remotes/[^/]*/HEAD$" | sed "s#^refs/remotes/##" | sed "s#^refs/heads/##" | sed "s#^refs/tags/#tags/#" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //"); +$mergecount)"
     echo -ne "$path"
-    if [[ ! -z "$(git stash list)" ]]; then
+    stashes=$(git stash list | wc -l | tr -d " \n")
+    if [[ "$stashes" != "0" ]]; then
+      if [[ "$stashes" != "1" ]]; then
+        color "1;33m" "$stashes"
+      fi
       color "1;33m" '\\*'
     fi
     if [[ ! -z "$(git status --porcelain)" ]]; then
