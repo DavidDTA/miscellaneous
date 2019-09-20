@@ -3,7 +3,7 @@ push_remote() {
   local message="dta remote push at $(date -u +%FT%TZ)"
   local index=$(git write-tree)
   git add --all
-  git update-ref -m "$message" refs/remotes/origin/dta-remote $(git commit-tree $(git write-tree) -p HEAD -m "$message")
+  git update-ref refs/remotes/origin/dta-remote $(git commit-tree $(git write-tree) -p HEAD -m "$message")
   git read-tree $index
   git push origin refs/remotes/origin/dta-remote:refs/heads/dta-remote --force
 }
