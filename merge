@@ -1,0 +1,41 @@
+#! /bin/bash
+set -e
+
+source ~/miscellaneous/error.sh
+
+pr="$1"
+[ -n "$pr" ] || error "PR number required"
+dependency="$2"
+[ -n "$dependency" ] || error "Dependent PR number required"
+
+tmpdir="$(mktemp -d)"
+trap "rm -r $tmpdir" EXIT
+
+git fetch --quiet
+repo="$(basename $(pwd))"
+
+read pr_head pr_ref pr_merged <<<$(hub api /repos/duolingo/$repo/pulls/$pr | jq -r '.head.sha // empty, .head.ref // empty, .merged')
+[ -n "$pr_head" ] || error "No PR head"
+[ -n "$pr_ref" ] || error "No PR ref"
+
+[ "false" == "$pr_merged" ] || error "PR already merged"
+
+git worktree add --detach "$tmpdir" "$pr_head"
+cd "$tmpdir"
+
+read dependency_head dependency_merge_commit dependency_merged <<<$(hub api /repos/duolingo/$repo/pulls/$dependency | jq -r '.head.sha // empty, .merge_commit_sha // empty, .merged')
+[ -n "$dependency_head" ] || error "No dependency head"
+[ -n "$dependency_merge_commit" ] || error "No dependency merge commit"
+
+git merge "$dependency_head" --no-edit --quiet || error "Can not merge dependency into PR"
+if [ "true" == "$dependency_merged" ] && [ "$dependency_merge_commit" != "$(git merge-base HEAD $dependency_merge_commit)" ]; then
+    git checkout "$dependency_head"
+    git merge "$dependency_merge_commit" --no-edit --quiet
+    dependency_extra_merge=$(git rev-parse --verify HEAD)
+    git checkout "$pr_head" --quiet
+    git merge "$dependency_extra_merge" --no-edit --quiet || error "Can not merge dependency into PR"
+    git checkout $(git commit-tree $(git write-tree) -p "$pr_head" -p "$dependency_merge_commit" -p "$dependency_head" -m "Merge #$dependency") --quiet
+fi
+gitk
+read # Ctrl+C to abort
+git push origin "HEAD:refs/heads/$pr_ref"
