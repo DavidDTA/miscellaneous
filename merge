@@ -15,7 +15,7 @@ trap "rm -r $tmpdir" EXIT
 git fetch --quiet
 read repo_owner repo_name <<<$(github_repo)
 
-read pr_head pr_ref pr_merged <<<$(hub api "/repos/$repo_owner/$repo_name/pulls/$pr" | jq -r '.head.sha // empty, .head.ref // empty, .merged')
+read pr_head pr_ref pr_merged <<<$(hub api graphql --raw-field query="query { repository(owner:\"$repo_owner\", name:\"$repo_name\") { issueOrPullRequest(number:$pr) { ... on PullRequest { headRef { name target { oid } } merged } } } }" | jq '.data.repository.issueOrPullRequest' | jq '.headRef.target.oid // empty, .headRef.name // empty, .merged' --raw-output)
 [ -n "$pr_head" ] || error "No PR head"
 [ -n "$pr_ref" ] || error "No PR ref"
 
@@ -24,7 +24,7 @@ read pr_head pr_ref pr_merged <<<$(hub api "/repos/$repo_owner/$repo_name/pulls/
 git worktree add --detach "$tmpdir" "$pr_head"
 cd "$tmpdir"
 
-read dependency_head dependency_merge_commit dependency_merged <<<$(hub api "/repos/$repo_owner/$repo_name/pulls/$dependency" | jq -r '.head.sha // empty, .merge_commit_sha // empty, .merged')
+read dependency_head dependency_merge_commit dependency_merged <<<$(hub api graphql --raw-field query="query { repository(owner:\"$repo_owner\", name:\"$repo_name\") { issueOrPullRequest(number:$dependency) { ... on PullRequest { headRef { target { oid } } mergeCommit { oid } merged } } } }" | jq '.data.repository.issueOrPullRequest' | jq '.headRef.target.oid // empty, .mergeCommit.oid // empty, .merged' --raw-output)
 [ -n "$dependency_head" ] || error "No dependency head"
 [ -n "$dependency_merge_commit" ] || error "No dependency merge commit"
 
