@@ -2,6 +2,7 @@
 set -e
 
 source ~/miscellaneous/error.sh
+source ~/miscellaneous/github_repo.sh
 
 pr="$1"
 [ -n "$pr" ] || error "PR number required"
@@ -12,9 +13,9 @@ tmpdir="$(mktemp -d)"
 trap "rm -r $tmpdir" EXIT
 
 git fetch --quiet
-repo="$(basename $(pwd))"
+read repo_owner repo_name <<<$(github_repo)
 
-read pr_head pr_ref pr_merged <<<$(hub api /repos/duolingo/$repo/pulls/$pr | jq -r '.head.sha // empty, .head.ref // empty, .merged')
+read pr_head pr_ref pr_merged <<<$(hub api "/repos/$repo_owner/$repo_name/pulls/$pr" | jq -r '.head.sha // empty, .head.ref // empty, .merged')
 [ -n "$pr_head" ] || error "No PR head"
 [ -n "$pr_ref" ] || error "No PR ref"
 
@@ -23,7 +24,7 @@ read pr_head pr_ref pr_merged <<<$(hub api /repos/duolingo/$repo/pulls/$pr | jq 
 git worktree add --detach "$tmpdir" "$pr_head"
 cd "$tmpdir"
 
-read dependency_head dependency_merge_commit dependency_merged <<<$(hub api /repos/duolingo/$repo/pulls/$dependency | jq -r '.head.sha // empty, .merge_commit_sha // empty, .merged')
+read dependency_head dependency_merge_commit dependency_merged <<<$(hub api "/repos/$repo_owner/$repo_name/pulls/$dependency" | jq -r '.head.sha // empty, .merge_commit_sha // empty, .merged')
 [ -n "$dependency_head" ] || error "No dependency head"
 [ -n "$dependency_merge_commit" ] || error "No dependency merge commit"
 
