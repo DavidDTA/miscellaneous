@@ -3,8 +3,9 @@ set -e
 
 source ~/miscellaneous/error.sh
 source ~/miscellaneous/github_repo.sh
+source ~/miscellaneous/github_user.sh
 
-github_user=$(hub api graphql --raw-field query='query { viewer { login } }' | jq '.data.viewer.login' --raw-output)
+github_user=$(github_user)
 
 read repo_owner repo_name <<<$(github_repo)
 
