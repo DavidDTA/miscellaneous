@@ -29,7 +29,8 @@ read dependency_head dependency_merge_commit dependency_merged <<<$(hub api grap
 [ -n "$dependency_merge_commit" ] || error "No dependency merge commit"
 
 git merge "$dependency_head" --no-edit --quiet || error "Can not merge dependency into PR"
-if [ "true" == "$dependency_merged" ] && [ "$dependency_merge_commit" != "$(git merge-base HEAD $dependency_merge_commit)" ]; then
+[ "true" == "$dependency_merged" ] || error "Dependency must be merged"
+if [ "$dependency_merge_commit" != "$(git merge-base HEAD $dependency_merge_commit)" ]; then
     git checkout "$dependency_head"
     git merge "$dependency_merge_commit" --no-edit --quiet
     dependency_extra_merge=$(git rev-parse --verify HEAD)
