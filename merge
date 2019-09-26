@@ -24,7 +24,7 @@ read pr_head pr_ref pr_merged <<<$(hub api graphql --raw-field query="query { re
 git worktree add --detach "$tmpdir" "$pr_head"
 cd "$tmpdir"
 
-read dependency_head dependency_merge_commit dependency_merged <<<$(hub api graphql --raw-field query="query { repository(owner:\"$repo_owner\", name:\"$repo_name\") { issueOrPullRequest(number:$dependency) { ... on PullRequest { headRef { target { oid } } mergeCommit { oid } merged } } } }" | jq '.data.repository.issueOrPullRequest' | jq '.headRef.target.oid // empty, .mergeCommit.oid // empty, .merged' --raw-output)
+read dependency_head dependency_merge_commit dependency_merged <<<$(hub api graphql --raw-field query="query { repository(owner:\"$repo_owner\", name:\"$repo_name\") { issueOrPullRequest(number:$dependency) { ... on PullRequest { headRefOid mergeCommit { oid } merged } } } }" | jq '.data.repository.issueOrPullRequest' | jq '.headRefOid // empty, .mergeCommit.oid // empty, .merged' --raw-output)
 [ -n "$dependency_head" ] || error "No dependency head"
 [ -n "$dependency_merge_commit" ] || error "No dependency merge commit"
 
