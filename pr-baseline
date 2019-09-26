@@ -1,0 +1,16 @@
+#! /bin/bash
+set -e
+
+source ~/miscellaneous/error.sh
+
+github_user=$(hub api graphql --raw-field query='query { viewer { login } }' | jq '.data.viewer.login' --raw-output)
+
+read repo <<<$(hub browse --url | sed -n 's|^https://github.com/\([^ /]*/[^ /]*\)$|\1|p')
+
+pr_query=$(hub api graphql --raw-field query='query { search(query:"is:pr is:open author:'"$github_user"' repo:'"$repo"'",type:ISSUE,first:100) { pageInfo { hasNextPage } nodes { ... on PullRequest { headRefOid } } } }')
+
+[ "false" == $(jq <<<$pr_query '.data.search.pageInfo.hasNextPage' --raw-output) ] || error "This script does not support more than 100 open PRs"
+
+git fetch
+git checkout origin/master
+jq <<<$pr_query '.data.search.nodes[].headRefOid' --raw-output | xargs git merge
