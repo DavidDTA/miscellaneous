@@ -8,7 +8,7 @@ github_user=$(hub api graphql --raw-field query='query { viewer { login } }' | j
 
 read repo_owner repo_name <<<$(github_repo)
 
-pr_query=$(hub api graphql --raw-field query='query { search(query:"is:pr is:open author:'"$github_user"' repo:'"$repo_owner/$repo_name"'",type:ISSUE,first:100) { pageInfo { hasNextPage } nodes { ... on PullRequest { headRefOid } } } }')
+pr_query=$(hub api graphql --raw-field query="query { search(query:\"is:pr is:open author:$github_user repo:$repo_owner/$repo_name\",type:ISSUE,first:100) { pageInfo { hasNextPage } nodes { ... on PullRequest { headRefOid } } } }")
 
 [ "false" == $(jq <<<$pr_query '.data.search.pageInfo.hasNextPage' --raw-output) ] || error "This script does not support more than 100 open PRs"
 
