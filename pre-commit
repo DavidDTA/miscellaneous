@@ -1,0 +1,6 @@
+#! /bin/bash
+set -e
+
+trap 'exit' SIGINT
+
+pre-commit run --files $(git diff $(git merge-base HEAD origin/master) --name-only)
