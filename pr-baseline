@@ -1,9 +1,9 @@
 #! /bin/bash
 set -e
 
-source ~/miscellaneous/error.sh
-source ~/miscellaneous/github_repo.sh
-source ~/miscellaneous/github_user.sh
+source $(dirname "$BASH_SOURCE")/error.sh
+source $(dirname "$BASH_SOURCE")/github_repo.sh
+source $(dirname "$BASH_SOURCE")/github_user.sh
 
 github_user=$(github_user)
 
