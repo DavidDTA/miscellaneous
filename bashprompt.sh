@@ -1,5 +1,5 @@
 PS1='$(
-  source ~/miscellaneous/color.sh
+  source '$(dirname "$BASH_SOURCE")'/color.sh
   if $(git status >/dev/null 2>/dev/null); then
     referencebranch="origin/master"
     root="$(git rev-parse --show-toplevel)"
