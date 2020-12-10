@@ -1,0 +1,76 @@
+#! /usr/local/bin/python3
+
+import argparse
+import getpass
+import math
+import os
+import random
+import re
+import signal
+import subprocess
+import sys
+import threading
+import time
+
+class StopException(Exception):
+        pass
+
+def signal_handler(signum, frame):
+    raise StopException()
+
+class Throttler:
+    def __init__(self):
+        self.paused_pids = set()
+        self.this_user = getpass.getuser()
+        self.ignore_pids = set([os.getpid(), os.getppid()])
+
+    def pause(self, pid, user, cmd):
+        if user == self.this_user and pid not in self.ignore_pids:
+            os.kill(pid, signal.SIGSTOP)
+            self.paused_pids.add(pid)
+            print(f"Paused {pid} {cmd}")
+        else:
+            print(f"Not pausing (owned by {user}) {command}")
+
+    def resume_all(self):
+        if self.paused_pids:
+            for pid in self.paused_pids:
+                os.kill(pid, signal.SIGCONT)
+            self.paused_pids.clear()
+            print("Resumed")
+
+    def num_paused(self):
+        return len(self.paused_pids)
+
+if __name__ == '__main__':
+    throttler = Throttler()
+    powermetrics_regex = re.compile('[\d]+(?:\.[\d]*)')
+    ps_regex = re.compile('([\d]+) *([\d]+(?:\.[\d]*)) *(\w+) *(.*)')
+    try:
+        signal.signal(signal.SIGINT, signal_handler)
+        powermetrics_process = subprocess.Popen(['sudo', 'powermetrics'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        for line in powermetrics_process.stdout:
+            if not line.startswith("CPU die temperature"):
+                continue
+            temp = float(powermetrics_regex.search(line).group(0))
+            total_cpu = None
+            if temp > 80:
+                total_cpu = 0.0
+                ps_process = subprocess.run(['ps', '-e', '-o', 'pid,%cpu,user,comm'], stdout=subprocess.PIPE, text=True)
+                for line in ps_process.stdout.splitlines():
+                    match = ps_regex.search(line)
+                    if not match:
+                        continue
+                    pid = int(match.group(1))
+                    cpu = float(match.group(2))
+                    user = str(match.group(3))
+                    command = str(match.group(4))
+                    total_cpu += cpu
+                    if cpu > 50:
+                        throttler.pause(pid, user, command)
+            elif temp < 75:
+                throttler.resume_all()
+            total_cpu_string = "" if total_cpu is None else f", TotalCPU: {total_cpu}"
+            print(f"Temperature: {temp}, Paused: {throttler.num_paused()}{total_cpu_string}")
+    except StopException:
+        throttler.resume_all()
