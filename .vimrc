@@ -1,6 +1,7 @@
 set hlsearch
 set ruler
 syntax on
+set re=0
 
 set noswapfile
 
