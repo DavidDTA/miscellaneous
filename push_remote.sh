@@ -4,7 +4,7 @@ push_remote() {
   local index=$(git write-tree)
   local branch=${1:-dta-remote}
   git add --all
-  git update-ref "refs/remotes/origin/$branch" $(git commit-tree $(git write-tree) -p HEAD -m "$message")
-  git read-tree $index
-  git push origin "refs/remotes/origin/$branch:refs/heads/$branch" --force
+  git update-ref "refs/remotes/origin/${branch}" $(git commit-tree $(git write-tree) -p HEAD -m "$message")
+  git read-tree "${index}"
+  git push origin "refs/remotes/origin/${branch}:refs/heads/$branch" --force
 }
