@@ -19,8 +19,14 @@ if $(git status >/dev/null 2>/dev/null); then
   mergecount=$(git rev-list ${mergebase}..${commit} --count | tr -d "\n")
   echo -ne "["
   color "32m" "$repo"
+  echo -ne ":"
+  color "36m" "$referencebranch+$mergecount"
+  branches=$(git show-ref | grep --color=never "^$commit" | sed "s#^[^ ]* ##" | grep -v --color=never "^refs/remotes/[^/]*/HEAD$" | sed "s#^refs/remotes/##" | sed "s#^refs/heads/##" | sed "s#^refs/tags/#tags/#" | grep -v "^${referencebranch}$" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //")
+  if [ -n "$branches" ]; then
+    echo -ne " "
+    color "36m" "($branches)"
+  fi
   echo -ne "]"
-  color "36m" "($(git show-ref | grep --color=never "^$commit" | sed "s#^[^ ]* ##" | grep -v --color=never "^refs/remotes/[^/]*/HEAD$" | sed "s#^refs/remotes/##" | sed "s#^refs/heads/##" | sed "s#^refs/tags/#tags/#" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //"); +$mergecount)"
   echo -ne "$path"
   asterisk "226" $(git stash list | wc -l | tr -d " \n")
   asterisk "202" $(git status --porcelain | grep '^[A-Z].' | wc -l)
