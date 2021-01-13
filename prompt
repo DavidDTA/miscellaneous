@@ -1,11 +1,19 @@
 #! /bin/bash
+
 source $(dirname "$BASH_SOURCE")/color.sh
+
+ESCAPE_SEQUENCE_START="$1"
+ESCAPE_SEQUENCE_END="$2"
+
+prompt_color() {
+  color "$1" "$2" "$ESCAPE_SEQUENCE_START" "$ESCAPE_SEQUENCE_END"
+}
 asterisk() {
   if [[ "$2" != "0" ]]; then
     if [[ "$2" != "1" ]]; then
-      color "38;5;${1}m" "$2"
+      prompt_color "38;5;${1}m" "$2"
     fi
-    color "1;38;5;${1}m" '*'
+    prompt_color "1;38;5;${1}m" '*'
   fi
 }
 if $(git status >/dev/null 2>/dev/null); then
@@ -18,13 +26,13 @@ if $(git status >/dev/null 2>/dev/null); then
   mergebase=$(git merge-base $referencebranch $commit | tr -d "\n") 
   mergecount=$(git rev-list ${mergebase}..${commit} --count | tr -d "\n")
   echo -ne "["
-  color "32m" "$repo"
+  prompt_color "32m" "$repo"
   echo -ne ":"
-  color "36m" "$referencebranch+$mergecount"
+  prompt_color "36m" "$referencebranch+$mergecount"
   branches=$(git show-ref | grep --color=never "^$commit" | sed "s#^[^ ]* ##" | grep -v --color=never "^refs/remotes/[^/]*/HEAD$" | sed "s#^refs/remotes/##" | sed "s#^refs/heads/##" | sed "s#^refs/tags/#tags/#" | grep -v "^${referencebranch}$" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //")
   if [ -n "$branches" ]; then
     echo -ne " "
-    color "36m" "($branches)"
+    prompt_color "36m" "($branches)"
   fi
   echo -ne "]"
   echo -ne "$path"
