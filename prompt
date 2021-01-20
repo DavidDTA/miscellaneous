@@ -37,7 +37,7 @@ if $(git status >/dev/null 2>/dev/null); then
   echo -ne "]"
   echo -ne "$path"
   asterisk "21" $(git branch -l | sed 's/^..//' | grep -v '^(' | wc -l)
-  asterisk "226" $(git stash list | wc -l | tr -d " \n")
+  asterisk "142" $(git stash list | wc -l | tr -d " \n")
   asterisk "202" $(git status --porcelain | grep '^[A-Z].' | wc -l)
   asterisk "196" $(git status --porcelain | grep '^.[A-Z]' | wc -l)
   asterisk "201" $(git status --porcelain | grep '^??' | wc -l)
