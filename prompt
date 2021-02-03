@@ -8,12 +8,12 @@ ESCAPE_SEQUENCE_END="$2"
 prompt_color() {
   color "$1" "$2" "$ESCAPE_SEQUENCE_START" "$ESCAPE_SEQUENCE_END"
 }
-asterisk() {
-  if [[ "$2" != "0" ]]; then
-    if [[ "$2" != "1" ]]; then
-      prompt_color "38;5;${1}m" "$2"
+print_stat() {
+  if [[ "$3" != "0" ]]; then
+    prompt_color "1;38;5;${2}m" "$1"
+    if [[ "$3" != "1" || "$1" = "+" ]]; then
+      prompt_color "38;5;${2}m" "$3"
     fi
-    prompt_color "1;38;5;${1}m" '*'
   fi
 }
 if $(git status >/dev/null 2>/dev/null); then
@@ -25,22 +25,25 @@ if $(git status >/dev/null 2>/dev/null); then
   commit=$(git rev-parse HEAD | tr -d "\n")
   mergebase=$(git merge-base $referencebranch $commit | tr -d "\n") 
   mergecount=$(git rev-list ${mergebase}..${commit} --count | tr -d "\n")
+  behind=$(git rev-list ${mergebase}..${referencebranch} --count | tr -d "\n")
   echo -ne "["
   prompt_color "32m" "$repo"
   echo -ne ":"
-  prompt_color "36m" "$referencebranch+$mergecount"
+  prompt_color "38;5;45m" "$referencebranch"
+  print_stat "^" "45" "$behind"
+  print_stat "+" "45" "$mergecount"
   branches=$(git show-ref | grep --color=never "^$commit" | sed "s#^[^ ]* ##" | grep -v --color=never "^refs/remotes/[^/]*/HEAD$" | sed "s#^refs/remotes/##" | sed "s#^refs/heads/##" | sed "s#^refs/tags/#tags/#" | grep -v "^${referencebranch}$" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //")
   if [ -n "$branches" ]; then
     echo -ne " "
-    prompt_color "36m" "($branches)"
+    prompt_color "38;5;45m" "($branches)"
   fi
   echo -ne "]"
   echo -ne "$path"
-  asterisk "21" $(git branch -l | sed 's/^..//' | grep -v '^(' | wc -l)
-  asterisk "142" $(git stash list | wc -l | tr -d " \n")
-  asterisk "202" $(git status --porcelain | grep '^[A-Z].' | wc -l)
-  asterisk "196" $(git status --porcelain | grep '^.[A-Z]' | wc -l)
-  asterisk "201" $(git status --porcelain | grep '^??' | wc -l)
+  print_stat "*" "21" $(git branch -l | sed 's/^..//' | grep -v '^(' | wc -l)
+  print_stat "*" "142" $(git stash list | wc -l | tr -d " \n")
+  print_stat "*" "202" $(git status --porcelain | grep '^[A-Z].' | wc -l)
+  print_stat "*" "196" $(git status --porcelain | grep '^.[A-Z]' | wc -l)
+  print_stat "*" "201" $(git status --porcelain | grep '^??' | wc -l)
 else
   echo -ne "$PWD";
 fi
