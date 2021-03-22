@@ -1,0 +1,4 @@
+#! /bin/bash
+set -e
+
+yabai -m config layout bsp
