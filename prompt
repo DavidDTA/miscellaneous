@@ -17,7 +17,7 @@ print_stat() {
   fi
 }
 if $(git status >/dev/null 2>/dev/null); then
-  referencebranch="origin/master"
+  referencebranch="origin/$(git symbolic-ref refs/remotes/origin/HEAD | sed s#.*/##)"
   root="$(git rev-parse --show-toplevel)"
   repo="${root##*/}"
   path="${PWD:${#root}}"
