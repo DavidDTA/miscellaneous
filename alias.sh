@@ -1,3 +1,3 @@
-alias ls='ls -G --color=auto'
+alias ls='ls -G'
 alias grep='grep -I --color=auto'
 alias xclip='xclip -selection clipboard'
