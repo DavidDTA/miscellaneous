@@ -1,4 +1,6 @@
 #! /bin/bash
+set -e
+trap 'echo error$ ' ERR
 
 source $(dirname "$BASH_SOURCE")/color.sh
 
@@ -17,33 +19,43 @@ print_stat() {
   fi
 }
 if $(git status >/dev/null 2>/dev/null); then
-  referencebranch="origin/$(git symbolic-ref refs/remotes/origin/HEAD | sed s#.*/##)"
+  current_branch="$(git rev-parse --abbrev-ref HEAD)"
+  upstream_commit="$(git rev-parse $current_branch@{upstream} 2>/dev/null || git rev-parse HEAD)"
+  reference_branch="origin/$(git symbolic-ref refs/remotes/origin/HEAD | sed s#.*/##)"
   root="$(git rev-parse --show-toplevel)"
   repo="${root##*/}"
   path="${PWD:${#root}}"
   path=${path/#\//>}
   commit=$(git rev-parse HEAD | tr -d "\n")
-  mergebase=$(git merge-base $referencebranch $commit | tr -d "\n") 
-  mergecount=$(git rev-list ${mergebase}..${commit} --count | tr -d "\n")
-  behind=$(git rev-list ${mergebase}..${referencebranch} --count | tr -d "\n")
+  upstream_mergebase=$(git merge-base $upstream_commit $commit | tr -d "\n")
+  upstream_mergecount=$(git rev-list ${upstream_mergebase}..${commit} --count | tr -d "\n")
+  #mergebase=$(git merge-base $reference_branch $commit | tr -d "\n")
+  #mergecount=$(git rev-list ${mergebase}..${commit} --count | tr -d "\n")
+  #behind=$(git rev-list ${mergebase}..${reference_branch} --count | tr -d "\n")
   echo -ne "["
   prompt_color "32m" "$repo"
   echo -ne ":"
-  prompt_color "38;5;45m" "$referencebranch"
-  print_stat "^" "45" "$behind"
-  print_stat "+" "45" "$mergecount"
-  branches=$(git show-ref | grep --color=never "^$commit" | sed "s#^[^ ]* ##" | grep -v --color=never "^refs/remotes/[^/]*/HEAD$" | sed "s#^refs/remotes/##" | sed "s#^refs/heads/##" | sed "s#^refs/tags/#tags/#" | grep -v "^${referencebranch}$" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //")
-  if [ -n "$branches" ]; then
-    echo -ne " "
-    prompt_color "38;5;45m" "($branches)"
-  fi
+  prompt_color "38;5;45m" "$current_branch"
+  print_stat "*" "21" $(git branch -l | grep -v '^\*' | sed 's/^..//' | wc -l) # branches
+  print_stat "*" "55" $(git stash list | wc -l | tr -d " \n") # stashes
+  #print_stat "^" "45" "$behind"
+  #branches=$(git show-ref | grep --color=never "^$commit" | sed "s#^[^ ]* ##" | grep -v --color=never "^refs/remotes/[^/]*/HEAD$" | sed "s#^refs/remotes/##" | sed "s#^refs/heads/##" | sed "s#^refs/tags/#tags/#" | grep -v "^${reference_branch}$" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //")
+  #if [ -n "$branches" ]; then
+  #  echo -ne " "
+  #  prompt_color "38;5;45m" "($branches)"
+  #fi
   echo -ne "]"
   echo -ne "$path"
-  print_stat "*" "21" $(git branch -l | grep -v '^\*' | sed 's/^..//' | wc -l)
-  print_stat "*" "142" $(git stash list | wc -l | tr -d " \n")
-  print_stat "*" "202" $(git status --porcelain | grep '^[A-Z].' | wc -l)
-  print_stat "*" "196" $(git status --porcelain | grep '^.[A-Z]' | wc -l)
-  print_stat "*" "201" $(git status --porcelain | grep '^??' | wc -l)
+
+  # commits from reference to pr base branch
+  # commits from pr base branch to pr head
+  # How far ahead is reference? PR base? upstream?
+
+  print_stat "*" "142" "$upstream_mergecount" # commits from reference to HEAD
+  print_stat "*" "202" $(git status --porcelain | grep '^[A-Z].' | wc -l) # modified files in index
+  print_stat "*" "196" $(git status --porcelain | grep '^.[A-Z]' | wc -l) # modified files locally
+  print_stat "*" "201" $(git status --porcelain | grep '^??' | wc -l) # new files
+
 else
   echo -ne "$PWD";
 fi
