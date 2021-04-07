@@ -19,9 +19,9 @@ print_stat() {
   fi
 }
 if $(git status >/dev/null 2>/dev/null); then
+  reference_commit="$(git rev-parse refs/remotes/origin/HEAD)"
   current_branch="$(git rev-parse --abbrev-ref HEAD)"
-  upstream_commit="$(git rev-parse $current_branch@{upstream} 2>/dev/null || git rev-parse HEAD)"
-  reference_branch="origin/$(git symbolic-ref refs/remotes/origin/HEAD | sed s#.*/##)"
+  upstream_commit="$(git rev-parse $current_branch@{upstream} 2>/dev/null || echo $reference_commit)"
   root="$(git rev-parse --show-toplevel)"
   repo="${root##*/}"
   path="${PWD:${#root}}"
@@ -29,9 +29,9 @@ if $(git status >/dev/null 2>/dev/null); then
   commit=$(git rev-parse HEAD | tr -d "\n")
   upstream_mergebase=$(git merge-base $upstream_commit $commit | tr -d "\n")
   upstream_mergecount=$(git rev-list ${upstream_mergebase}..${commit} --count | tr -d "\n")
-  #mergebase=$(git merge-base $reference_branch $commit | tr -d "\n")
+  #mergebase=$(git merge-base $reference_commit $commit | tr -d "\n")
   #mergecount=$(git rev-list ${mergebase}..${commit} --count | tr -d "\n")
-  #behind=$(git rev-list ${mergebase}..${reference_branch} --count | tr -d "\n")
+  #behind=$(git rev-list ${mergebase}..${reference_commit} --count | tr -d "\n")
   echo -ne "["
   prompt_color "32m" "$repo"
   echo -ne ":"
