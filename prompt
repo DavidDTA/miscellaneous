@@ -49,7 +49,7 @@ if $(git status >/dev/null 2>/dev/null); then
 
   # commits from reference to pr base branch
   # commits from pr base branch to pr head
-  # How far ahead is reference? PR base? upstream?
+  # How far ahead is reference? PR base?
 
   print_stat "*" "142" "$upstream_mergecount" # commits from reference to HEAD
   print_stat "*" "202" $(git status --porcelain | grep '^[A-Z].' | wc -l) # modified files in index
