@@ -26,12 +26,12 @@ if $(git status >/dev/null 2>/dev/null); then
   repo="${root##*/}"
   path="${PWD:${#root}}"
   path=${path/#\//>}
-  commit=$(git rev-parse HEAD | tr -d "\n")
-  upstream_mergebase=$(git merge-base $upstream_commit $commit | tr -d "\n")
-  upstream_mergecount=$(git rev-list ${upstream_mergebase}..${commit} --count | tr -d "\n")
+  current_commit=$(git rev-parse HEAD | tr -d "\n")
+  upstream_mergebase=$(git merge-base $upstream_commit $current_commit | tr -d "\n")
+  upstream_mergecount=$(git rev-list ${upstream_mergebase}..${current_commit} --count | tr -d "\n")
   upstream_behind=$(git rev-list ${upstream_mergebase}..${upstream_commit} --count | tr -d "\n")
-  #mergebase=$(git merge-base $reference_commit $commit | tr -d "\n")
-  #mergecount=$(git rev-list ${mergebase}..${commit} --count | tr -d "\n")
+  #mergebase=$(git merge-base $reference_commit $current_commit | tr -d "\n")
+  #mergecount=$(git rev-list ${mergebase}..${current_commit} --count | tr -d "\n")
   echo -ne "["
   prompt_color "32m" "$repo"
   echo -ne ":"
@@ -39,7 +39,7 @@ if $(git status >/dev/null 2>/dev/null); then
   print_stat "^" "45" "$upstream_behind"
   print_stat "*" "21" $(git branch -l | grep -v '^\*' | sed 's/^..//' | wc -l) # branches
   print_stat "*" "55" $(git stash list | wc -l | tr -d " \n") # stashes
-  #branches=$(git show-ref | grep --color=never "^$commit" | sed "s#^[^ ]* ##" | grep -v --color=never "^refs/remotes/[^/]*/HEAD$" | sed "s#^refs/remotes/##" | sed "s#^refs/heads/##" | sed "s#^refs/tags/#tags/#" | grep -v "^${reference_branch}$" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //")
+  #branches=$(git show-ref | grep --color=never "^$current_commit" | sed "s#^[^ ]* ##" | grep -v --color=never "^refs/remotes/[^/]*/HEAD$" | sed "s#^refs/remotes/##" | sed "s#^refs/heads/##" | sed "s#^refs/tags/#tags/#" | grep -v "^${reference_branch}$" | sed "s/^/ /" | paste -sd ","  - | sed "s/^ //")
   #if [ -n "$branches" ]; then
   #  echo -ne " "
   #  prompt_color "38;5;45m" "($branches)"
