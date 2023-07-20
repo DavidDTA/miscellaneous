@@ -1,5 +1,5 @@
 newapp() {
-  # Usage: newapp app url profile
+  # Usage: newapp app url profile_email
   #
   # Creates a barebones mac which wraps a website.
   # The app will be indexed in spotlight for easy access.
@@ -17,15 +17,14 @@ newapp() {
   #     will be accessible in spotlight under this name.
   #   url:
   #     The url that serves as the homepage of the app.
-  #   profile:
-  #     The Chrome profile to use. Optional.
+  #   profile_email:
+  #     The Chrome profile email address to use. Optional.
   
   local appdir="${1//"'"/}"                                                                       
   local appdir="${appdir:-test}.app"                                                              
   local url="${2//"'"/}"
   local url="${url:-https://example.com}"                                                         
-  local profile="${3//"'"/}"
-  local profile="${profile:-Default}"                                                             
+  local profile_email="${3//"'"/}"
   local contents="$appdir/Contents"
   local macos="$contents/MacOS"
   local script="$macos/script"
@@ -36,7 +35,7 @@ newapp() {
   mkdir -p "$macos"                                                                               
   echo '<plist version="1.0"><dict><key>CFBundleExecutable</key><string>script</string></dict></plist>' > "$contents/Info.plist"
   echo '#!/bin/bash' >"$script"
-  echo "open -n -a 'Google Chrome' --args --profile-directory='$profile' --app='$url'" >>"$script"
+  echo "open -n -a 'Google Chrome' --args --profile-email='$profile_email' --app='$url'" >>"$script"
   chmod +x "$script"
   vim "$script"
   mdimport "$appdir"                                                                              
