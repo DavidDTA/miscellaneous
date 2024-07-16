@@ -21,7 +21,7 @@ print_stat() {
 if $(git status >/dev/null 2>/dev/null); then
   remote="origin"
   reference_commit=$(git show-ref --verify -s "refs/remotes/$remote/HEAD")
-  current_branch="$(git rev-parse --abbrev-ref HEAD)"
+  current_branch="$(git branch --show-current)"
   upstream_commit="$(git rev-parse $current_branch@{upstream} 2>/dev/null || echo $reference_commit)"
   root="$(git rev-parse --show-toplevel)"
   repo="${root##*/}"
@@ -35,7 +35,7 @@ if $(git status >/dev/null 2>/dev/null); then
   echo -ne "["
   prompt_color "32m" "$repo"
   echo -ne ":"
-  prompt_color "38;5;45m" "$current_branch"
+  prompt_color "38;5;45m" "${current_branch:-(detached)}"
   print_stat "^" "45" "$upstream_behind"
   print_stat "*" "21" $(git branch -l | grep -v '^\*' | wc -l) # branches
   print_stat "*" "55" $(git stash list | wc -l | tr -d " \n") # stashes
