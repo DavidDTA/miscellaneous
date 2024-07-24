@@ -13,7 +13,7 @@ prompt_color() {
 print_stat() {
   if [[ "$3" != "0" ]]; then
     prompt_color "1;38;5;${2}m" "$1"
-    if [[ "$3" != "1" || "$1" = "+" ]]; then
+    if [[ "$3" != "1" ]]; then
       prompt_color "38;5;${2}m" "$3"
     fi
   fi
@@ -27,29 +27,34 @@ if $(git status >/dev/null 2>/dev/null); then
   repo="${root##*/}"
   path="${PWD:${#root}}"
   path=${path/#\//>}
-  current_commit=$(git rev-parse HEAD | tr -d "\n")
-  upstream_mergebase=$(git merge-base $upstream_commit $current_commit | tr -d "\n")
-  upstream_mergecount=$(git rev-list ${upstream_mergebase}..${current_commit} --count | tr -d "\n")
-  upstream_behind=$(git rev-list ${upstream_mergebase}..${upstream_commit} --count | tr -d "\n")
+  current_commit=$(git rev-parse --verify HEAD | tr -d "\n")
+  current_mergecount=$(git rev-list ${current_commit} ^${upstream_commit} ^${reference_commit} --count | tr -d "\n")
+  upstream_mergecount=$(git rev-list ${upstream_commit} ^${reference_commit} --count | tr -d "\n")
+  current_behind=$(git rev-list ${upstream_commit} ^${reference_commit} ^${current_commit}  --count | tr -d "\n")
+  upstream_behind=$(git rev-list ${reference_commit} ^${upstream_commit} --count | tr -d "\n")
 
   echo -ne "["
   prompt_color "32m" "$repo"
   echo -ne ":"
   prompt_color "38;5;45m" "${current_branch:-(detached)}"
-  print_stat "^" "45" "$upstream_behind"
+  if [[ "$current_behind" != "0" || "$upstream_behind" != "0" ]]; then
+    print_stat "^" "214" "$current_behind"
+    print_stat "^" "142" "$upstream_behind"
+  fi
+  print_stat "*" "142" "$upstream_mergecount" # commits from reference to upstream
+  print_stat "*" "214" "$current_mergecount" # commits from upstream to HEAD
+  print_stat "*" "202" $(git status --porcelain | grep '^[A-Z].' | wc -l) # modified files in index
+  print_stat "*" "196" $(git status --porcelain | grep '^.[A-Z]' | wc -l) # modified files locally
+  print_stat "*" "201" $(git status --porcelain | grep '^??' | wc -l) # new files
+  echo -ne "]"
+
   print_stat "*" "21" $(git branch -l | grep -v '^\*' | wc -l) # branches
   print_stat "*" "55" $(git stash list | wc -l | tr -d " \n") # stashes
-  echo -ne "]"
   echo -ne "$path"
 
   # commits from reference to pr base branch
   # commits from pr base branch to pr head
   # How far ahead is reference? PR base?
-
-  print_stat "*" "142" "$upstream_mergecount" # commits from reference to HEAD
-  print_stat "*" "202" $(git status --porcelain | grep '^[A-Z].' | wc -l) # modified files in index
-  print_stat "*" "196" $(git status --porcelain | grep '^.[A-Z]' | wc -l) # modified files locally
-  print_stat "*" "201" $(git status --porcelain | grep '^??' | wc -l) # new files
 
 else
   echo -ne "$PWD";
