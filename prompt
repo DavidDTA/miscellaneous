@@ -20,11 +20,11 @@ print_stat() {
 }
 if $(git status >/dev/null 2>/dev/null); then
   remote="origin"
+  repo="$(basename $(git config --get remote.${remote}.url) .git)"
   reference_commit=$(git show-ref --verify -s "refs/remotes/$remote/HEAD")
   current_branch="$(git branch --show-current)"
   upstream_commit="$(git rev-parse --verify $current_branch@{upstream} 2>/dev/null || echo $reference_commit)"
   root="$(git rev-parse --show-toplevel)"
-  repo="$(basename ${root})"
   path="${PWD/#${root}}"
   path=${path/#\//>}
   current_commit=$(git rev-parse --verify HEAD | tr -d "\n")
