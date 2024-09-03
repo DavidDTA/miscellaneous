@@ -24,8 +24,8 @@ if $(git status >/dev/null 2>/dev/null); then
   current_branch="$(git branch --show-current)"
   upstream_commit="$(git rev-parse --verify $current_branch@{upstream} 2>/dev/null || echo $reference_commit)"
   root="$(git rev-parse --show-toplevel)"
-  repo="${root##*/}"
-  path="${PWD:${#root}}"
+  repo="$(basename ${root})"
+  path="${PWD/#${root}}"
   path=${path/#\//>}
   current_commit=$(git rev-parse --verify HEAD | tr -d "\n")
   current_mergecount=$(git rev-list ${current_commit} ^${upstream_commit} ^${reference_commit} --count | tr -d "\n")
@@ -33,9 +33,10 @@ if $(git status >/dev/null 2>/dev/null); then
   current_behind=$(git rev-list ${upstream_commit} ^${reference_commit} ^${current_commit}  --count | tr -d "\n")
   upstream_behind=$(git rev-list ${reference_commit} ^${upstream_commit} --count | tr -d "\n")
 
-  echo -ne "["
   prompt_color "32m" "$repo"
-  echo -ne ":"
+  print_stat "*" "21" $(git branch -l | grep -v '^\*' | wc -l) # branches
+  print_stat "*" "55" $(git stash list | wc -l | tr -d " \n") # stashes
+  echo -ne ">"
   prompt_color "38;5;45m" "${current_branch:-(detached)}"
   if [[ "$current_behind" != "0" || "$upstream_behind" != "0" ]]; then
     print_stat "^" "214" "$current_behind"
@@ -46,10 +47,6 @@ if $(git status >/dev/null 2>/dev/null); then
   print_stat "*" "202" $(git status --porcelain | grep '^[A-Z].' | wc -l) # modified files in index
   print_stat "*" "196" $(git status --porcelain | grep '^.[A-Z]' | wc -l) # modified files locally
   print_stat "*" "201" $(git status --porcelain | grep '^??' | wc -l) # new files
-  echo -ne "]"
-
-  print_stat "*" "21" $(git branch -l | grep -v '^\*' | wc -l) # branches
-  print_stat "*" "55" $(git stash list | wc -l | tr -d " \n") # stashes
   echo -ne "$path"
 
   # commits from reference to pr base branch
