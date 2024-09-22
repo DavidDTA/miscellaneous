@@ -1,13 +1,15 @@
 #! @python3@/bin/python
 
 import argparse
-import subprocess
+import os
 import queue
+import signal
+import subprocess
 import sys
 import threading
 
 def _process_output(out, callback):
-    for line in iter(out.readline, b''):
+    for line in out:
         callback(line)
 
 def _enqueue_changed_file(q):
@@ -56,13 +58,13 @@ def _main():
         fswatch = subprocess.Popen(['@fswatch@/bin/fswatch', '--recursive', '--event', 'Created', '--event', 'Updated', '--event', 'Removed', *args.paths], stdout=subprocess.PIPE)
         _start_output_thread(fswatch.stdout, _enqueue_changed_file(fswatch_queue))
     while True:
-        command = subprocess.Popen([*args.command], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        command = subprocess.Popen([*args.command], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
         command_thread_stdout = _start_output_thread(command.stdout, _enqueue_line_with_metadata(output_queue, 'command'))
         command_thread_stderr = _start_output_thread(command.stderr, _enqueue_line_with_metadata(output_queue, 'command'))
         modified = set()
         modified.add(fswatch_queue.get())
         output_queue.put(('watch', 'Stopping.'))
-        command.terminate()
+        os.killpg(os.getpgid(command.pid), signal.SIGTERM)
         command.wait()
         command_thread_stdout.join()
         command_thread_stderr.join()
