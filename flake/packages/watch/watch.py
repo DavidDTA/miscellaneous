@@ -1,6 +1,7 @@
 #! @python3@/bin/python
 
 import argparse
+import codecs
 import os
 import queue
 import signal
@@ -9,18 +10,17 @@ import sys
 import threading
 
 def _process_output(out, callback):
-    for line in out:
+    for line in codecs.iterdecode(out, 'utf-8'):
         callback(line)
 
 def _enqueue_changed_file(q):
     def callback(line):
-        q.put(''.join(line.decode("utf-8").splitlines()))
+        q.put(line)
     return callback
 
 def _enqueue_line_with_metadata(q, metadata):
     def callback(line):
-        for split in line.decode("utf-8").splitlines():
-            q.put((metadata, split))
+        q.put((metadata, line))
     return callback
 
 def _merge_output(q):
@@ -32,7 +32,7 @@ def _merge_output(q):
                 print(f'^^^ {last_name} ^^^')
             print(f'vvv {name} vvv')
             last_name = name
-        print(line)
+        print(line.rstrip('\n'))
 
 def _start_output_thread(out, callback):
     thread = threading.Thread(target=_process_output, args=(out, callback))
