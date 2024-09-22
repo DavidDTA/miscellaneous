@@ -58,23 +58,29 @@ def _main():
         fswatch = subprocess.Popen(['@fswatch@/bin/fswatch', '--recursive', '--event', 'Created', '--event', 'Updated', '--event', 'Removed', *args.paths], stdout=subprocess.PIPE)
         _start_output_thread(fswatch.stdout, _enqueue_changed_file(fswatch_queue))
     while True:
-        command = subprocess.Popen([*args.command], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
-        command_thread_stdout = _start_output_thread(command.stdout, _enqueue_line_with_metadata(output_queue, 'command'))
-        command_thread_stderr = _start_output_thread(command.stderr, _enqueue_line_with_metadata(output_queue, 'command'))
-        modified = set()
-        modified.add(fswatch_queue.get())
-        output_queue.put(('watch', 'Stopping.'))
-        os.killpg(os.getpgid(command.pid), signal.SIGTERM)
-        command.wait()
-        command_thread_stdout.join()
-        command_thread_stderr.join()
-        while not fswatch_queue.empty():
+        command = None
+        try:
+            command = subprocess.Popen([*args.command], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+            command_thread_stdout = _start_output_thread(command.stdout, _enqueue_line_with_metadata(output_queue, 'command'))
+            command_thread_stderr = _start_output_thread(command.stderr, _enqueue_line_with_metadata(output_queue, 'command'))
+            modified = set()
             modified.add(fswatch_queue.get())
-        message = "Modified:\n"
-        for file in sorted(modified):
-            message += "    " + file + "\n"
-        message += "Restarting."
-        output_queue.put(('watch', message))
+            output_queue.put(('watch', 'Stopping.'))
+            os.killpg(os.getpgid(command.pid), signal.SIGTERM)
+            command.wait()
+            command_thread_stdout.join()
+            command_thread_stderr.join()
+            while not fswatch_queue.empty():
+                modified.add(fswatch_queue.get())
+            message = "Modified:\n"
+            for file in sorted(modified):
+                message += "    " + file + "\n"
+            message += "Restarting."
+            output_queue.put(('watch', message))
+        except KeyboardInterrupt:
+            if command is not None:
+                os.killpg(os.getpgid(command.pid), signal.SIGTERM)
+            raise
 
 if __name__ == '__main__':
     _main()
