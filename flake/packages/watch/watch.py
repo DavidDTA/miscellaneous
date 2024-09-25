@@ -71,7 +71,9 @@ def _main():
                 '--recursive',
                 *args.paths
             ],
-            stdout=subprocess.PIPE
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL
         )
         _start_output_thread(
             fswatch.stdout,
