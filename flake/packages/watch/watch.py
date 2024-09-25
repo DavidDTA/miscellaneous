@@ -1,27 +1,34 @@
-#! @python3@/bin/python
-
 import argparse
 import codecs
 import os
 import queue
 import signal
 import subprocess
-import sys
 import threading
+
+
+_FSWATCH_BIN = (
+    '@fswatch@'
+    '/bin/fswatch'
+)
+
 
 def _process_output(out, callback):
     for line in codecs.iterdecode(out, 'utf-8'):
         callback(line)
+
 
 def _enqueue_changed_file(q):
     def callback(line):
         q.put(line)
     return callback
 
+
 def _enqueue_line_with_metadata(q, metadata):
     def callback(line):
         q.put((metadata, line))
     return callback
+
 
 def _merge_output(q):
     last_name = None
@@ -34,17 +41,20 @@ def _merge_output(q):
             last_name = name
         print(line.rstrip('\n'))
 
+
 def _start_output_thread(out, callback):
     thread = threading.Thread(target=_process_output, args=(out, callback))
     thread.daemon = True
     thread.start()
     return thread
 
+
 def _start_output_merge_thread(q):
     thread = threading.Thread(target=_merge_output, args=(q,))
     thread.daemon = True
     thread.start()
     return thread
+
 
 def _main():
     parser = argparse.ArgumentParser()
@@ -55,14 +65,36 @@ def _main():
     output_queue = queue.Queue()
     _start_output_merge_thread(output_queue)
     if args.paths:
-        fswatch = subprocess.Popen(['@fswatch@/bin/fswatch', '--recursive', '--event', 'Created', '--event', 'Updated', '--event', 'Removed', *args.paths], stdout=subprocess.PIPE)
-        _start_output_thread(fswatch.stdout, _enqueue_changed_file(fswatch_queue))
+        fswatch = subprocess.Popen(
+            [
+                _FSWATCH_BIN,
+                '--recursive',
+                *args.paths
+            ],
+            stdout=subprocess.PIPE
+        )
+        _start_output_thread(
+            fswatch.stdout,
+            _enqueue_changed_file(fswatch_queue)
+        )
     while True:
         command = None
         try:
-            command = subprocess.Popen([*args.command], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
-            command_thread_stdout = _start_output_thread(command.stdout, _enqueue_line_with_metadata(output_queue, 'command'))
-            command_thread_stderr = _start_output_thread(command.stderr, _enqueue_line_with_metadata(output_queue, 'command'))
+            command = subprocess.Popen(
+                [*args.command],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                start_new_session=True
+            )
+            command_thread_stdout = _start_output_thread(
+                command.stdout,
+                _enqueue_line_with_metadata(output_queue, 'command')
+            )
+            command_thread_stderr = _start_output_thread(
+                command.stderr,
+                _enqueue_line_with_metadata(output_queue, 'command')
+            )
             modified = set()
             modified.add(fswatch_queue.get())
             output_queue.put(('watch', 'Stopping.'))
@@ -81,6 +113,7 @@ def _main():
             if command is not None:
                 os.killpg(os.getpgid(command.pid), signal.SIGTERM)
             raise
+
 
 if __name__ == '__main__':
     _main()
