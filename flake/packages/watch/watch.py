@@ -1,8 +1,8 @@
 import argparse
 import codecs
 import os
+import psutil
 import queue
-import signal
 import subprocess
 import threading
 
@@ -56,6 +56,25 @@ def _start_output_merge_thread(q):
     return thread
 
 
+def _kill_session(proc):
+    proc.terminate()
+    sid = os.getsid(proc.pid)
+    while True:
+        psutil.process_iter.cache_clear()
+        session_procs = [
+            candidate_proc
+            for candidate_proc in psutil.process_iter()
+            if os.getsid(candidate_proc.pid) == sid
+            and candidate_proc.pid != proc.pid
+        ]
+        if not session_procs:
+            break
+        for session_proc in session_procs:
+            session_proc.terminate()
+        psutil.wait_procs(session_procs)
+    proc.wait()
+
+
 def _main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--paths', nargs='*', dest='paths', default=[])
@@ -100,8 +119,7 @@ def _main():
             modified = set()
             modified.add(fswatch_queue.get())
             output_queue.put(('watch', 'Stopping.'))
-            os.killpg(os.getpgid(command.pid), signal.SIGTERM)
-            command.wait()
+            _kill_session(command)
             command_thread_stdout.join()
             command_thread_stderr.join()
             while not fswatch_queue.empty():
@@ -113,7 +131,7 @@ def _main():
             output_queue.put(('watch', message))
         except KeyboardInterrupt:
             if command is not None:
-                os.killpg(os.getpgid(command.pid), signal.SIGTERM)
+                _kill_session(command)
             raise
 
 

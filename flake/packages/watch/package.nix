@@ -3,6 +3,7 @@
     "watch"
     {
       libraries = [
+        python3Packages.psutil
       ];
     }
     (
