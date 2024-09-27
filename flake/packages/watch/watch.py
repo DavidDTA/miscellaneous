@@ -87,6 +87,12 @@ def _main():
         fswatch = subprocess.Popen(
             [
                 _FSWATCH_BIN,
+                '--event',
+                'Created',
+                '--event',
+                'Updated',
+                '--event',
+                'Removed',
                 '--recursive',
                 *args.paths
             ],
