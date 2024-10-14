@@ -193,6 +193,7 @@ def _main():
                                 fswatch_stdout_buffer = split[0]
                                 break
                     if command.sentinel in selected:
+                        command.join()
                         command.close()
                         quit_pipe_in.close()
                         message = "Modified:\n"
