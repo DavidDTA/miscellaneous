@@ -1,0 +1,33 @@
+#! /bin/bash
+
+# Prune worktrees
+for worktree in $(git worktree list --porcelain | grep '^worktree' | sed 's/[^ ]* //' | tail -n +2); do
+  if ! [ -z "$(lsof +D ${worktree})" ]; then
+    echo "Spared worktree ${worktree} (open files)"
+  elif ! git worktree remove "${worktree}" 2>/dev/null; then
+    echo "Spared worktree ${worktree} (not clean)"
+  else
+    echo "Removed worktree ${worktree}"
+  fi
+done
+
+# Prune branches
+for branch_ref in $(git for-each-ref --format='%(refname)' 'refs/heads'); do
+  branch="$(git rev-parse --abbrev-ref "${branch_ref}")"
+  if ! [ -z "$(git for-each-ref --omit-empty --format='%(if)%(worktreepath)%(then)worktree%(end)' "${branch_ref}")" ]; then
+    echo "Spared branch ${branch} (checked out)"
+  else
+    git branch -d "${branch}"
+  fi
+done
+
+# Prune branches that have been squash-merged via PR
+git for-each-ref refs/heads --shell --format '
+gh pr list --state closed --base master --search %(objectname) --json headRefOid | \
+jq --raw-output ".[].headRefOid" | \
+sed "s/^/git merge-base --is-ancestor %(objectname) /" | \
+sed "s#\$# 2>/dev/null || \\\\#"  | \
+cat - <(echo false) | \
+bash -e && echo %(refname:short)
+' | bash | xargs git branch -D
+
