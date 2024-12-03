@@ -1,0 +1,34 @@
+#! /bin/bash
+
+set -e
+
+if [ "${#}" != "2" ]; then
+  echo "usage: $(basename "${0}") <GIT_PARENT_DIRECTORY> <WORKTREE_PARENT_DIRECTORY>"
+  echo
+  echo "Prints the selected worktree directory"
+  exit 1
+fi
+
+git_parent_directory="${1}"
+worktree_parent_directory="${2}"
+
+git_directory="$(find "${git_parent_directory}" -type d -execdir sh -c 'git -C {} rev-parse --is-inside-work-tree >/dev/null 2>/dev/null' ';' -print -prune | fzf)"
+
+shortref="$(git -C "${git_directory}" for-each-ref --format="%(refname:short)" | fzf --bind=enter:accept-or-print-query)"
+
+if git -C "${git_directory}" rev-parse --verify --quiet "${shortref}" >/dev/null; then
+  fullref="$(git -C "${git_directory}" rev-parse --symbolic-full-name "${shortref}")"
+  worktree="$(git -C "${git_directory}" for-each-ref --omit-empty --format='%(worktreepath)' "${fullref}")"
+  if [ -z "${worktree}" ]; then
+    # TODO: Find and open detached worktrees
+    worktree="$(mktemp -d -p "${worktree_parent_directory}" -t worktree)"
+    git -C "${git_directory}" worktree add "${worktree}" "${shortref}" >/dev/tty
+  fi
+else
+  # create a branch in a worktree
+  starting_point="$(git -C "${git_directory}" for-each-ref --format="%(refname:short)" | fzf)"
+  worktree="$(mktemp -d -p "${worktree_parent_directory}" -t worktree)"
+  git -C "${git_directory}" worktree add --quiet -b "${shortref}" "${worktree}" "${starting_point}" --no-track >/dev/tty
+fi
+
+echo ${worktree}
