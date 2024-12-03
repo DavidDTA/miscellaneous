@@ -37,7 +37,7 @@ if $(git status >/dev/null 2>/dev/null); then
   print_stat "*" "21" $(git branch -l | grep -v '^\*' | wc -l) # branches
   print_stat "*" "55" $(git stash list | wc -l | tr -d " \n") # stashes
   echo -ne ">"
-  prompt_color "38;5;45m" "${current_branch:-(detached)}"
+  prompt_color "38;5;45m" "${current_branch:-$(git for-each-ref --points-at HEAD --format "%(refname:short)" | paste -sd , -)}"
   print_stat "^" "142" "$upstream_behind"
   print_stat "*" "142" "$upstream_mergecount" # commits from reference to upstream
   print_stat "^" "214" "$current_behind"
