@@ -17,7 +17,7 @@ done
 # Prune branches
 for branch_ref in $(git for-each-ref --format='%(refname)' 'refs/heads'); do
   branch="$(git rev-parse --abbrev-ref "${branch_ref}")"
-  if ! [ -z "$(git for-each-ref --omit-empty --format='%(if)%(worktreepath)%(then)worktree%(end)' "${branch_ref}")" ]; then
+  if ! [ -z "$(git for-each-ref --omit-empty --format='%(worktreepath)' "${branch_ref}")" ]; then
     echo "Spared branch ${branch} (checked out)"
   else
     git branch -d "${branch}"
