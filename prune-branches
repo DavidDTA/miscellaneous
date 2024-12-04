@@ -2,11 +2,14 @@
 
 # Prune worktrees
 for worktree in $(git worktree list --porcelain | grep '^worktree' | sed 's/[^ ]* //' | tail -n +2); do
-  if ! [ -z "$(lsof +D ${worktree})" ]; then
-    echo "Spared worktree ${worktree} (open files)"
-  elif ! git worktree remove "${worktree}" 2>/dev/null; then
+  if [ -z "$(git -C "${worktree}" for-each-ref --contains)" ]; then
+    echo "Spared worktree ${worktree} (not merged)"
+  elif ! [ -z "$(git -C "${worktree}" status --porcelain)" ]; then
     echo "Spared worktree ${worktree} (not clean)"
+  elif ! [ -z "$(lsof +D "${worktree}")" ]; then
+    echo "Spared worktree ${worktree} (open files)"
   else
+    git worktree remove "${worktree}"
     echo "Removed worktree ${worktree}"
   fi
 done
