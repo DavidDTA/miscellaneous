@@ -2,18 +2,23 @@ set hlsearch
 set ruler
 syntax on
 set re=0
-
 set noswapfile
+set list
+set listchars=extends:>,precedes:<
+set errorformat=%f:%o:%l:%c:%e:%k:%m
 
 nnoremap j gj
 nnoremap k gk
 
-nnoremap <Tab> :cn<Return>
-nnoremap <S-Tab> :cp<Return>
-nnoremap <Space> :cc<Return>
+nnoremap <Tab> :cclose<Bar>cn<Return>
+nnoremap <S-Tab> :cclose<Bar>cp<Return>
+" https://stackoverflow.com/q/11198382#comment122398806_63162084
+nnoremap <expr> <Space> empty(filter(getwininfo(), 'v:val.quickfix')) ? ':%bd<Bar>copen<Bar>bd#<Return>' : ':cc<Bar>cclose<Return>'
+nnoremap <Esc> :w<Bar>cexpr system('nix run .#dev.quickfix')<Return>
 
 autocmd Filetype python setlocal tabstop=4 shiftwidth=4 expandtab autoindent
 autocmd Filetype elm setlocal tabstop=4 shiftwidth=4 expandtab autoindent
+autocmd BufWinEnter quickfix setlocal nowrap
 
 " VimTip: http://vim.wikia.com/wiki/Search_for_visually_selected_text
 " Search for selected text, forwards or backwards.
