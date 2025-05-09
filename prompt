@@ -1,5 +1,5 @@
 #! /usr/bin/env bash
-set -e
+set -Eeuo pipefail
 trap 'echo error$ ' ERR
 
 source $(dirname "$BASH_SOURCE")/color.sh
@@ -18,7 +18,7 @@ print_stat() {
     fi
   fi
 }
-if $(git status >/dev/null 2>/dev/null); then
+if git_status="$(git status --porcelain 2>/dev/null)"; then
   remote="origin"
   repo="$(basename $(git config --get remote.${remote}.url) .git)"
   reference_commit=$(git show-ref --verify -s "refs/remotes/$remote/HEAD")
@@ -42,9 +42,9 @@ if $(git status >/dev/null 2>/dev/null); then
   print_stat "*" "142" "$upstream_mergecount" # commits from reference to upstream
   print_stat "^" "214" "$current_behind"
   print_stat "*" "214" "$current_mergecount" # commits from upstream to HEAD
-  print_stat "*" "202" $(git status --porcelain | grep '^[A-Z].' | wc -l) # modified files in index
-  print_stat "*" "196" $(git status --porcelain | grep '^.[A-Z]' | wc -l) # modified files locally
-  print_stat "*" "201" $(git status --porcelain | grep '^??' | wc -l) # new files
+  print_stat "*" "202" $(<<<"${git_status}" grep '^[A-Z].' | wc -l) # modified files in index
+  print_stat "*" "196" $(<<<"${git_status}" grep '^.[A-Z]' | wc -l) # modified files locally
+  print_stat "*" "201" $(<<<"${git_status}" grep '^??' | wc -l) # new files
   echo -ne "$path"
 
   # commits from reference to pr base branch
