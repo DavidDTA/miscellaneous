@@ -4,6 +4,7 @@
   # Simply install just the packages
   environment.packages = with pkgs; [
     curl
+    findutils
     git
     gnugrep
     jq
