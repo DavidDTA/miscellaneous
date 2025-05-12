@@ -10,6 +10,7 @@
     jq
     nix-search-cli
     openssh
+    ps
     tmux
     vim
 
