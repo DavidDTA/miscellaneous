@@ -14,7 +14,9 @@
   outputs = { self, nixpkgs, nixpkgs-unstable, nix-on-droid }:
     let
       system = "aarch64-linux";
-      unstable-overlay = final: prev: with nixpkgs-unstable.legacyPackages.${system}; {
+      unstable-overlay = final: prev: with import nixpkgs-unstable {
+        inherit system;
+      }; {
       };
     in
     {
