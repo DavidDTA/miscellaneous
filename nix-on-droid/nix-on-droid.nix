@@ -9,6 +9,7 @@
     git
     gnugrep
     jq
+    jujutsu
     nix-search-cli
     openssh
     ps

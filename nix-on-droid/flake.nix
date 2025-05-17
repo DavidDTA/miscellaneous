@@ -17,6 +17,7 @@
       unstable-overlay = final: prev: with import nixpkgs-unstable {
         inherit system;
       }; {
+        inherit jujutsu;
       };
     in
     {
