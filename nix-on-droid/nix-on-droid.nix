@@ -3,6 +3,7 @@
 {
   # Simply install just the packages
   environment.packages = with pkgs; [
+    bash
     curl
     direnv
     findutils
