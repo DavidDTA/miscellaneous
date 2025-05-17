@@ -20,6 +20,7 @@
       };
     in
     {
+      programs.direnv.enable = true;
       nixOnDroidConfigurations.default = nix-on-droid.lib.nixOnDroidConfiguration {
         pkgs = import nixpkgs {
           inherit system;
