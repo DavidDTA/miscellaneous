@@ -14,7 +14,7 @@ nnoremap <Tab> :cclose<Bar>cn<Return>
 nnoremap <S-Tab> :cclose<Bar>cp<Return>
 " https://stackoverflow.com/q/11198382#comment122398806_63162084
 nnoremap <expr> <Space> empty(filter(getwininfo(), 'v:val.quickfix')) ? ':%bd<Bar>copen<Bar>bd#<Return>' : ':cc<Bar>cclose<Return>'
-nnoremap <Esc> :w<Bar>cexpr system('nix run .#dev.quickfix')<Return>
+nnoremap <Esc> :w<Bar>cexpr system('type -p quickfix >/dev/null && quickfix')<Return>
 
 autocmd Filetype python setlocal tabstop=4 shiftwidth=4 expandtab autoindent
 autocmd Filetype elm setlocal tabstop=4 shiftwidth=4 expandtab autoindent
