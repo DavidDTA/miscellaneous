@@ -9,6 +9,8 @@ set errorformat=%f:%o:%l:%c:%e:%k:%m
 
 nnoremap j gj
 nnoremap k gk
+nnoremap <Down> gj
+nnoremap <Up> gk
 
 nnoremap <Tab> :cclose<Bar>cn<Return>
 nnoremap <S-Tab> :cclose<Bar>cp<Return>
@@ -18,6 +20,10 @@ nnoremap <Esc> :w<Bar>cexpr system('type -p quickfix >/dev/null && quickfix')<Re
 
 autocmd Filetype python setlocal tabstop=4 shiftwidth=4 expandtab autoindent
 autocmd Filetype elm setlocal tabstop=4 shiftwidth=4 expandtab autoindent
+autocmd Filetype qf nnoremap <buffer> h zh
+autocmd Filetype qf nnoremap <buffer> l zl
+autocmd Filetype qf nnoremap <buffer> <Left> zh
+autocmd Filetype qf nnoremap <buffer> <Right> zl
 autocmd BufWinEnter quickfix setlocal nowrap
 
 " VimTip: http://vim.wikia.com/wiki/Search_for_visually_selected_text
