@@ -21,8 +21,12 @@ nnoremap <Esc> :w<Bar>cexpr system('type -p quickfix >/dev/null && quickfix')<Re
 autocmd Filetype python setlocal tabstop=4 shiftwidth=4 expandtab autoindent
 autocmd Filetype elm setlocal tabstop=4 shiftwidth=4 expandtab autoindent
 autocmd Filetype qf nnoremap <buffer> h zh
+autocmd Filetype qf nnoremap <buffer> j <C-e>
+autocmd Filetype qf nnoremap <buffer> k <C-y>
 autocmd Filetype qf nnoremap <buffer> l zl
 autocmd Filetype qf nnoremap <buffer> <Left> zh
+autocmd Filetype qf nnoremap <buffer> <Down> <C-e>
+autocmd Filetype qf nnoremap <buffer> <Up> <C-y>
 autocmd Filetype qf nnoremap <buffer> <Right> zl
 autocmd BufWinEnter quickfix setlocal nowrap
 
