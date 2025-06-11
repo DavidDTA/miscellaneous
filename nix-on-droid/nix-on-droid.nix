@@ -37,6 +37,10 @@
     #unzip
   ];
 
+  environment.sessionVariables = {
+    EDITOR = "vim";
+  };
+
   # android-integration.termux-open.enable = true;
   # android-integration.termux-open-url.enable = true;
 
