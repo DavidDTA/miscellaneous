@@ -1,0 +1,506 @@
+[colors]
+"conflict" = "bright red"
+"success" = "bright green"
+"warning" = "bright yellow"
+"error" = "bright red"
+"running" = "yellow"
+"pull-request" = "bright blue"
+"reviewer" = "yellow"
+"pull-request draft" = "white"
+
+[revsets]
+log = '(log_targets | (::immutable_heads() & ancestors(immutable_heads()..log_targets, 2)) | (::trunk() & ancestors(trunk()..log_targets, 2)) | root() | present(trunk()) | ((present(trunk())..@):: & tags())) ~ trivial_working_copy'
+log-graph-prioritize = "::trunk()"
+
+[revset-aliases]
+stage = 'mutable() & subject(exact:"[stage]")'
+staged = '::stage-'
+log_targets = '(immutable_heads() | ((root()..immutable_heads())::).. & committer_date(after:"40 minutes ago")).. | present(@) | present(pr_heads) | (bookmarks() ~ present(trunk()))'
+#interesting = 'log_targets | present(trunk())..present(@) | fork_point(present(@)|present(trunk()))'
+interesting = 'log_targets | @-'
+trivial_working_copy = '@ & empty() & description(exact:"") & ~@+- & ~merges()'
+"immutable_heads()" = "tags() | remote_bookmarks()"
+
+[aliases]
+pr = ["util", "exec", "--", "bash", "-c", """
+set -Eeuo pipefail
+
+action="${1:-}"
+
+get_bookmark() {
+  jj log --no-graph -r "${1}" --template "remote_bookmarks.filter(|bookmark| bookmark.remote() == \\"origin\\").map(|bookmark| bookmark.name())"
+}
+
+case "${action}" in
+  new)
+    revision="${2:-@}"
+    bookmark="$(jj log --no-graph -r "${revision}" --template 'description.first_line()' | sed 's/ /-/g' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g')"
+    jj bookmark create "${bookmark}" -r "${revision}"
+    gt track --branch "${bookmark}"
+    gt submit --branch "${bookmark}"
+    jj bookmark track "${bookmark}@origin"
+    jj pr sync
+  ;;
+  update)
+    current_pr_head="${2}"
+    new_pr_head="${3}"
+    bookmark="$(get_bookmark "${current_pr_head}")"
+    if [ -z "${bookmark}" ]; then
+      echo "Invalid PR commit: ${current_pr_head}"
+      exit 1
+    fi
+    jj bookmark move "${bookmark}" --to "${new_pr_head}"
+    jj git push --bookmark "${bookmark}"
+    jj pr sync
+  ;;
+  open)
+    revision="${2:-@}"
+    bookmark="$(get_bookmark "${revision}")"
+    if [ -z "${bookmark}" ]; then
+      echo "Invalid PR commit: ${revision}"
+      exit 1
+    fi
+    (cd "$(jj git root)" && gh pr view --web "${bookmark}")
+  ;;
+  sync)
+    jj git fetch --quiet
+    (
+      cd "$(jj git root)" &&
+      {
+          gh pr list --author DavidDTA --json number,headRefName,isDraft,title,statusCheckRollup,reviewRequests,assignees,mergeable |
+          jq --raw-output "$(cat <<'EOF_jq'
+            "jj config set --repo 'revset-aliases.pr_heads' " +
+            ([ .[].headRefName + "@origin", "none()" ] | join(" | ") | @sh),
+            "jj config set --repo 'template-aliases.\\"format_pr_metadata(commit)\\"' " +
+            (
+              "coalesce(" +
+              (
+                [
+                  .[] |
+                  "format_pr_metadata(" +
+                  (
+                    [
+                      "commit",
+                      (.headRefName | @json),
+                      (.number | @json),
+                      (.isDraft | @json),
+                      (.title | @json),
+                      (.mergeable == "CONFLICTING" | @json),
+                      (
+                        [
+                          .statusCheckRollup[] |
+                          (
+                            select(.__typename == "CheckRun" and .status == "COMPLETED" and .conclusion == "FAILURE") |
+                            .name
+                          ),
+                          (
+                            select(.__typename == "StatusContext" and .state == "FAILURE") |
+                            .context
+                          )
+                        ] |
+                        join(" ") |
+                        @json
+                      ),
+                      (
+                        [
+                          .statusCheckRollup[] |
+                          (
+                            select(.__typename == "CheckRun" and (.status != "COMPLETED" or (.conclusion != "FAILURE" and .conclusion != "NEUTRAL" and .conclusion != "SUCCESS"))) |
+                            .name
+                          ),
+                          (
+                            select(.__typename == "StatusContext" and .state != "FAILURE" and .state != "SUCCESS") |
+                            .context
+                          )
+                        ] |
+                        join(" ") |
+                        @json
+                      ),
+                      (
+                        [.assignees[].login, .reviewRequests[].login] |
+                        unique |
+                        join(" ") | 
+                        @json
+                      )
+                    ] |
+                    join(", ")
+                  ) +
+                  ")"
+                ] |
+                join(", ")
+              ) +
+              ")" |
+              @json |
+              @sh
+            ),
+            (
+              .[] |
+              "[ \\"$(jj bookmark list --remote origin --tracked --revisions " +
+              (.headRefName | @sh) +
+              "@origin --template 'if(tracked && name == \\"" +
+              (.headRefName | @sh) +
+              "\\" && remote == \\"origin\\", \\"true\\")')\\" = \\"true\\" ] || jj bookmark track " +
+              (.headRefName | @sh) +
+              "@origin --quiet"
+            )
+EOF_jq
+          )" |
+          bash
+        }
+      )
+      jj config set --repo "pr.last-updated" "$(date '+%s')"
+  ;;
+  *)
+    echo "Unsupported action: \"${action}\""
+  ;;
+esac
+""", ""]
+restack = ["util", "exec", "--", "bash", "-c", """
+set -Eeuo pipefail
+jj rebase -s 'all:(::trunk())+ & mutable() ~ merges()' -d 'trunk()'
+jj simplify-parents -r stage
+""", ""]
+stage = ["util", "exec", "--", "bash", "-c", """
+set -Eeuo pipefail
+revision="${1:-@}"
+jj rebase -s stage -d "all:stage- | heads(${1})"
+""", ""]
+unstage = ["util", "exec", "--", "bash", "-c", """
+set -Eeuo pipefail
+revision="${1:-@}"
+jj rebase -s stage -d "all:stage- ~ (${1})"
+""", ""]
+staged = ["util", "exec", "--", "bash", "-c", """
+set -Eeuo pipefail
+jj log -r 'mutable() & staged' --template custom_log --color always | sed 's/(elided revisions)//'
+""", ""]
+unstaged = ["util", "exec", "--", "bash", "-c", """
+set -Eeuo pipefail
+jj log -r 'ancestors(mutable() ~ ::stage ~ trivial_working_copy, 2)' --template custom_log --color always | sed 's/(elided revisions)//'
+""", ""]
+background = ["util", "exec", "--", "bash", "-c", """
+set -Eeuo pipefail
+
+action="${1:-<unspecified>}"
+
+case "${action}" in
+  run)
+    set -x
+    revision="${2}"
+    commit_ids="$(jj log --no-graph --revisions "${revision}" --template "commit_id ++ ' '")"
+    parent_dir="$(jj config get background.parent_directory)"
+    repo_name="$(jj config get background.repo-name)"
+    repo_dir="${parent_dir}/${repo_name}"
+    workspaces_dir="${repo_dir}/workspaces"
+    export archives_dir="${repo_dir}/archives"
+    mkdir -p "${workspaces_dir}"
+    mkdir -p "${archives_dir}"
+    for commit_id in $commit_ids; do
+      export commit_id
+      workspace_id="$(comm -13 <(jj workspace list --quiet | grep '^background-[0-9]\\+:' | sed 's/^background-//' | sed 's/:.*//' | sort --numeric-sort) <(comm -13 <(ls "${workspaces_dir}" | sort --numeric-sort) <(seq 99)) | head -n 1)"
+      export workspace_parent_dir="${workspaces_dir}/${workspace_id}"
+      rm -rf "${workspace_parent_dir}"
+      mkdir -p "${workspace_parent_dir}"
+      export workspace_dir="${workspace_parent_dir}/workspace"
+      jj --quiet workspace add "${workspace_dir}" --name="background-${workspace_id}" --revision "${commit_id}" --sparse-patterns empty
+      cd "${workspace_dir}"
+      log_file="${workspace_parent_dir}/background.log"
+      jj --quiet describe --message "running\n\nbackground-log: ${log_file}"
+      jj --quiet background associate "${commit_id}" @
+      jj --quiet abandon
+      jj --quiet new 'root()' --message "squash of commit ${commit_id}"
+      jj --quiet restore --from "${commit_id}"
+      jj --quiet new --message "background"
+      bash -Eeuo pipefail <<'EOF_async' 2>&1 | ts -i >"${log_file}" &
+        command="$(jj config get background.default-command)"
+        jj --quiet describe --message "running\n\n${command}\n\n$(jj log --no-graph --revisions @ --template "trailers")"
+        jj sparse reset
+        bash -Eeuo pipefail -c "${command}" 2>&1 && exit_code="${?}" || exit_code="${?}"
+        archive_dir="${archives_dir}/$(jj log --no-graph --revisions @ --template "commit_id")"
+        jj describe --message "$([ "${exit_code}" = "0" ] && echo "success" || echo "failure")\n\n${command}\n\nbackground-log: ${archive_dir}/background.log\nbackground-archive-dir: ${workspace_dir}"
+        background_commit_id="$(jj log --no-graph --revisions @ --template commit_id)"
+        jj --ignore-working-copy --quiet abandon "..@"
+        jj --ignore-working-copy background associate "${commit_id}" "${background_commit_id}"
+        jj --ignore-working-copy workspace forget
+        mv "${workspace_parent_dir}" "${archive_dir}"
+        echo "Finished async script in ${SECONDS} seconds"
+EOF_async
+    done
+  ;;
+  show)
+    revision="${2}"
+    jj show "$(jj log --no-graph --revisions "${revision}" --template "background_commit_id(self)")"
+  ;;
+  squash)
+    revision="${2}"
+    jj squash --use-destination-message --from "$(jj log --no-graph --revisions "${revision}" --template "background_commit_id(self)")" --into "${revision}"
+  ;;
+  log)
+    revision="${2}"
+    cat "$(jj log --no-graph --revisions "$(jj log --no-graph --revisions "${revision}" --template "background_commit_id(self)")" --template 'trailers.filter(|trailer| trailer.key() == "background-log").map(|trailer| trailer.value())')"
+  ;;
+  archive)
+    revision="${2}"
+    echo "$(jj log --no-graph --revisions "$(jj log --no-graph --revisions "${revision}" --template "background_commit_id(self)")" --template 'trailsers.filter(|trailer| trailer.key() == "background-archive-dir").map(|trailer| trailer.value())')"
+  ;;
+  associate)
+    # Ignores working copy
+    export commit_id="$(jj --ignore-working-copy log --no-graph --revisions "${2}" --template "commit_id")"
+    export background_commit_id="$(jj --ignore-working-copy log --no-graph --revisions "${3}" --template "commit_id")"
+    parent_dir="$(jj --ignore-working-copy config get background.parent_directory)"
+    repo_name="$(jj --ignore-working-copy config get background.repo-name)"
+    repo_dir="${parent_dir}/${repo_name}"
+    repo_lockfile="${repo_dir}/lockfile"
+    lockf -t 30 "${repo_lockfile}" bash -Eeuo pipefail <<'EOF_lockf'
+      selected_alias="$(jj --ignore-working-copy log --no-graph --revisions "${background_commit_id}" --template 'coalesce(
+        if(!hidden, "background_commit_id_running"),
+        if(description.first_line() == "success" && empty, "background_commit_id_success"),
+        if(description.first_line() == "success", "background_commit_id_warning"),
+        "background_commit_id_error",
+      )')"
+      for alias in background_commit_id_running background_commit_id_error background_commit_id_warning background_commit_id_success; do
+        jj --ignore-working-copy config set --repo "template-aliases.'${alias}(commit)'" "'coalesce($(jj --ignore-working-copy log --no-graph --revisions "all()" --template "if('${alias}' == '${selected_alias}' && (stringify(${alias}(self)) != '' || self.contained_in('${commit_id}')) || '${alias}' != '${selected_alias}' && stringify(${alias}(self)) != '' && !self.contained_in('${commit_id}'),'if(commit.contained_in(\\\"' ++ commit_id ++ '\\\"), \\\"' ++ if(self.contained_in('${commit_id}'), '${background_commit_id}', ${alias}(self)) ++ '\\\"),')"))'"
+      done
+EOF_lockf
+  ;;
+  *)
+    echo "Unsupported action: \"${action}\""
+  ;;
+esac
+""", ""]
+
+[templates]
+log_node = '''
+coalesce(
+  if(!self, label("elided", "╎")),
+  if(root, label("root", "⊥")),
+  label(
+    separate(" ",
+      if(immutable, "immutable"),
+      if(current_working_copy || self.contained_in('trivial_working_copy-'), "working_copy"),
+      if(conflict, "conflict"),
+    ),
+    coalesce(
+      if(current_working_copy, "@"),
+      if(self.contained_in('::present(trunk())'), "◆"),
+      if(immutable, "◇"),
+      if(conflict, "×"),
+      if(self.contained_in("::stage"), "●"),
+      "○",
+    )
+  )
+)
+'''
+
+[template-aliases]
+custom_log = '''
+label(
+  if(self.contained_in("@ | trivial_working_copy-"), "working_copy"),
+  separate("\n",
+    separate(
+      " ",
+      if(
+        self.contained_in("interesting"),
+        separate(
+          " ",
+          if(hidden, format_short_commit_id(commit_id), format_short_change_id_with_hidden_and_divergent_info(self)),
+          if(conflict, label("conflict", "conflict")),
+          coalesce(
+            if(stringify(background_commit_id_success(self)) != "", label("success", "✔")),
+            if(stringify(background_commit_id_warning(self)) != "", label("warning", "⚠")),
+            if(stringify(background_commit_id_running(self)) != "", label("running", "⇌")),
+            if(stringify(background_commit_id_error(self)) != "", label("error", "✘")),
+          ),
+          if(
+            !mine,
+            separate(
+              " ",
+              if(author.name(), author.name(), name_placeholder),
+              if(
+                config("ui.show-cryptographic-signatures").as_boolean(),
+                format_short_cryptographic_signature(signature),
+              ),
+            ),
+          ),
+          coalesce(
+            format_pr_metadata(self),
+            if(
+              description,
+              description.first_line(),
+              label(if(empty, "empty"), description_placeholder),
+            ),
+          ),
+        ),
+      ),
+      working_copies,
+      bookmarks,
+      tags,
+      if(self.contained_in("::immutable_heads() & ((immutable_heads()..)- | interesting)"), committer.timestamp().ago()),
+    ),
+    if(self.contained_in("interesting & immutable_heads().. & stage-.."),
+      coalesce(
+        if(
+          empty,
+          label("empty", "(empty)"),
+        ),
+        if(stringify(diff.color_words(0)).lines().len() <= 8, diff.color_words(0)),
+        if(diff.files().len() <= 8, diff.stat(1024)),
+        format_diff_stat(diff.stat()),
+      ),
+    ),
+  ),
+)
+'''
+'format_timestamp(timestamp)' = 'timestamp.ago()' # 'timestamp.local().format("%Y-%m-%d %H:%M:%S")'
+'format_diff_stat(stat)' = '_format_diff_stat(stat.total_added(), stat.total_removed())'
+'_format_diff_stat(total_added, total_removed)' = '''
+if(
+  total_added == 0 && total_removed == 0,
+  label("diff modified", "(modified)"),
+  concat(
+    if(total_added != 0, label("diff added", concat("+", total_added))),
+    if(total_added != 0 && total_removed != 0, "/"),
+    if(total_removed != 0, label("diff removed", concat("-", total_removed))),
+  ),
+)
+'''
+'background_commit_id(commit)' = '''
+  coalesce(
+    background_commit_id_error(commit),
+    background_commit_id_warning(commit),
+    background_commit_id_running(commit),
+    background_commit_id_success(commit),
+  )
+'''
+'background_commit_id_success(commit)' = '""'
+'background_commit_id_warning(commit)' = '""'
+'background_commit_id_error(commit)' = '""'
+'background_commit_id_running(commit)' = '""'
+'format_pr_metadata(commit)' = '""'
+'format_pr_metadata(commit, branch, number, draft, title, conflicting, failed_checks, pending_checks, reviewers)' = '''
+if(
+  commit.remote_bookmarks().filter(|bookmark| bookmark.remote() == "origin" && bookmark.name() == branch),
+  separate(
+    " ",
+    label(separate(" ", "pull-request", if(draft, "draft")), "#" ++ number),
+    title,
+    if(conflicting, label("conflict", "conflict")),
+    label("error", failed_checks),
+    label("warning", pending_checks),
+    label("reviewer", reviewers),
+  ),
+)
+'''
+
+[merge-tools.diffs]
+program = "bash"
+merge-args = ["-c", """
+set -Eeuo pipefail
+
+base="${1}"
+left="${2}"
+right="${3}"
+output="${4}"
+
+tmpdir="$(mktemp -d)"
+cd "${tmpdir}"
+jj git init --colocate
+cp "${base}" ./file
+jj bookmark create base
+jj new
+cp -f "${left}" ./file
+jj bookmark create left
+jj new base
+cp -f "${right}" ./file
+jj bookmark create right
+
+jj new left right
+jj resolve --tool :ours
+jj bookmark create ours
+jj new left right
+jj resolve --tool :theirs
+jj bookmark create theirs
+jj diff --from ours --to theirs
+
+#jj new left
+#git merge right --squash --strategy-option=ours
+#jj bookmark create left-merged
+
+#jj new right
+#git merge left --squash --strategy-option=ours
+#jj bookmark create left-on-right-keep-right
+
+#jj new right
+#git merge left --squash --strategy-option=theirs
+#jj bookmark create left-on-right-keep-left
+
+#jj new
+#cp file "${output}"
+
+#jj new left-on-right-keep-right
+
+#"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" --wait --diff file "${output}"
+
+exit
+
+#jj squash -r left-merged
+#jj squash -r right-merged
+
+#jj new
+#jj restore --from left-merged
+#jj bookmark create left-on-right-merged
+#jj show
+
+#git diff left-on-right-keep-right left-on-right-keep-left --ignore-all-space
+
+#git show left-on-right
+
+#git range-diff --ignore-space-change left^..left left-on-right^..left-on-right
+
+#jj interdiff --from left --to left-on-right
+
+#jj interdiff --ignore-all-space --from base..left-merged --to left-on-right-merged
+#jj new left right
+#jj resolve --tool kdiff3
+jj log -T builtin_log_oneline
+""", "", "$base", "$left", "$right", "$output"]
+[merge-tools.vscode]
+program = "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
+merge-args = ["--wait", "--merge", "$left", "$right", "$base", "$output"]
+[merge-tools.studio]
+merge-args = ["merge", "$left", "$right", "$base", "$output"]
+[merge-tools.p4merge]
+merge-args = ["$base", "$left", "$right", "$output"]
+
+[[--scope]]
+--when.commands = ["log"]
+[--scope.ui]
+#paginate = "never"
+
+[ui]
+editor = "vim"
+default-command = ["util", "exec", "--", "bash", "-c", """
+set -Eeuo pipefail
+# Features:
+# * Show the default jj log
+# * Remove (elided revisions) from the log graph, as a workaround for https://github.com/jj-vcs/jj/issues/5830
+# * Perform a pr sync every time. If it has been more than 10 minutes since the last sync, perform the sync before showing the graph; otherwise do the sync afterward
+
+update_first=$(( $(date '+%s') - $(jj config get 'pr.last-updated' 2>/dev/null || echo 0) > 600))
+if [ "${update_first}" = "1" ]; then
+  jj pr sync
+fi
+jj log --template custom_log --color always | sed 's/(elided revisions)//'
+if [ "${update_first}" = "0" ]; then
+  jj pr sync
+fi
+""", ""]
+show-diff-stats = true
+log-word-wrap = true
+merge-editor = "vscode"
+
+[background]
+parent_directory = "/var/folders/l_/sd5rhzx92fq8fctqpqv15vvw0000gp/T/tmp.5Pev8WbRa9"
+
+[git]
+private-commits = '''stage'''
