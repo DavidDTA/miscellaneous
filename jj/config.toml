@@ -176,7 +176,7 @@ jj log -r 'mutable() & staged' --template custom_log --color always | sed 's/(el
 """, ""]
 unstaged = ["util", "exec", "--", "bash", "-c", """
 set -Eeuo pipefail
-jj log -r 'ancestors(mutable() ~ ::stage ~ trivial_working_copy, 2)' --template custom_log --color always | sed 's/(elided revisions)//'
+jj log -r 'ancestors(mutable() ~ ::stage ~ trivial_working_copy, 2)' --template 'separate("\n", custom_log, log_diff_stats)' --color always | sed 's/(elided revisions)//'
 """, ""]
 background = ["util", "exec", "--", "bash", "-c", """
 set -Eeuo pipefail
@@ -337,17 +337,19 @@ label(
       tags,
       if(self.contained_in("::immutable_heads() & ((immutable_heads()..)- | interesting)"), committer.timestamp().ago()),
     ),
-    if(self.contained_in("interesting & immutable_heads().. & stage-.."),
-      coalesce(
-        if(
-          empty,
-          label("empty", "(empty)"),
-        ),
-        if(stringify(diff.color_words(0)).lines().len() <= 8, diff.color_words(0)),
-        if(diff.files().len() <= 8, diff.stat(1024)),
-        format_diff_stat(diff.stat()),
-      ),
+  ),
+)
+'''
+log_diff_stats = '''
+if(self.contained_in("interesting & immutable_heads().. & stage-.."),
+  coalesce(
+    if(
+      empty,
+      label("empty", "(empty)"),
     ),
+    if(stringify(diff.color_words(0)).lines().len() <= 8, diff.color_words(0)),
+    if(diff.files().len() <= 8, diff.stat(1024)),
+    format_diff_stat(diff.stat()),
   ),
 )
 '''
