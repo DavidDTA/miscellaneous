@@ -40,8 +40,8 @@ case "${action}" in
     revision="${2:-@}"
     bookmark="$(jj log --no-graph -r "${revision}" --template 'description.first_line()' | sed 's/ /-/g' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g')"
     jj bookmark create "${bookmark}" -r "${revision}"
-    gt track --branch "${bookmark}"
-    gt submit --branch "${bookmark}"
+    gt --cwd "$(jj git root)/.." track --branch "${bookmark}"
+    gt --cwd "$(jj git root)/.." submit --branch "${bookmark}"
     jj bookmark track "${bookmark}@origin"
     jj pr sync
   ;;
