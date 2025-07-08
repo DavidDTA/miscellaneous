@@ -53,6 +53,12 @@ case "${action}" in
       echo "Invalid PR commit: ${current_pr_head}"
       exit 1
     fi
+    commits_without_descriptions="$(jj log --no-graph --revisions "${bookmark}..${new_pr_head} & description(exact:'')" --template 'change_id.shortest() ++ " "')"
+    if [ -n "${commits_without_descriptions}" ]; then
+      echo "Add a description to these commits: ${commits_without_descriptions}"
+      exit 1
+    fi
+    jj git push --revisions "${new_pr_head}"
     jj bookmark move "${bookmark}" --to "${new_pr_head}"
     jj git push --bookmark "${bookmark}"
     jj pr sync
