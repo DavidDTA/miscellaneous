@@ -3,4 +3,12 @@ set -e
 
 trap 'exit' SIGINT
 
-pre-commit run --files $(git diff $(git merge-base HEAD origin/master) --name-only)
+git rev-parse --is-inside-work-tree >/dev/null 2>/dev/null || git -C "$(jj workspace root)" init --initial-branch pre-commit-branch
+
+pre-commit run --files $(jj diff --name-only --revisions 'trunk()..@') && exit_code="${?}" || exit_code="${?}"
+
+if [ -z "$(git rev-list -n 1 --all 2>/dev/null)" ]; then
+  rm -rf "$(jj workspace root)/.git"
+fi
+
+exit "${exit_code}"
