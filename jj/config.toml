@@ -18,7 +18,7 @@ staged = '::stage-'
 log_targets = '(immutable_heads() | ((root()..immutable_heads())::).. & committer_date(after:"40 minutes ago")).. | present(@) | present(pr_heads) | (bookmarks() ~ present(trunk()))'
 #interesting = 'log_targets | present(trunk())..present(@) | fork_point(present(@)|present(trunk()))'
 interesting = 'log_targets | @-'
-trivial_working_copy = '@ & empty() & description(exact:"") & ~@+- & ~merges()'
+trivial_working_copy = 'working_copies() & empty() & description(exact:"") & visible_heads() & ~merges()'
 "immutable_heads()" = "tags() | remote_bookmarks()"
 
 [aliases]
@@ -277,7 +277,7 @@ coalesce(
   label(
     separate(" ",
       if(immutable, "immutable"),
-      if(current_working_copy || self.contained_in('trivial_working_copy-'), "working_copy"),
+      if(current_working_copy || self.contained_in('(@ & trivial_working_copy)-'), "working_copy"),
       if(conflict, "conflict"),
     ),
     coalesce(
@@ -295,7 +295,7 @@ coalesce(
 [template-aliases]
 custom_log = '''
 label(
-  if(self.contained_in("@ | trivial_working_copy-"), "working_copy"),
+  if(self.contained_in("@ | (@ & trivial_working_copy)-"), "working_copy"),
   separate("\n",
     separate(
       " ",
