@@ -348,8 +348,9 @@ if(self.contained_in("interesting & immutable_heads().. & stage-.."),
       label("empty", "(empty)"),
     ),
     if(stringify(diff.color_words(0)).lines().len() <= 8, diff.color_words(0)),
-    if(diff.files().len() <= 8, diff.stat(1024)),
-    format_diff_stat(diff.stat()),
+    if(diff.files().len() == 1, separate(" ", format_diff_stat(diff.stat()), diff.files().map(|file| file.path()))),
+    if(diff.files().len() <= 8, separate("\n", format_diff_stat(diff.stat()), diff.files().map(|file| label(coalesce(if(file.status() == "added" || file.status() == "copied", "diff added"), if(file.status() == "removed", "diff removed"), "diff modified"), file.path())).join("\n"))),
+    separate(" ", format_diff_stat(diff.stat()), "(" ++ diff.files().len() ++ " files)"),
   ),
 )
 '''
