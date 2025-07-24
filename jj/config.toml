@@ -60,7 +60,6 @@ case "${action}" in
       echo "Add a description to these commits: ${commits_without_descriptions}"
       exit 1
     fi
-    jj git push --revisions "${new_pr_head}"
     jj bookmark move "${bookmark}" --to "${new_pr_head}"
     jj git push --bookmark "${bookmark}"
     jj pr sync
