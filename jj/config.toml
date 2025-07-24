@@ -265,8 +265,8 @@ EOF_async
     lockf -t 30 "${repo_lockfile}" bash -Eeuo pipefail <<'EOF_lockf'
       selected_alias="$(jj --ignore-working-copy log --no-graph --revisions "${background_commit_id}" --template 'coalesce(
         if(!hidden, "background_commit_id_running"),
-        if(description.first_line() == "success" && empty, "background_commit_id_success"),
-        if(description.first_line() == "success", "background_commit_id_warning"),
+        if(description == "success" && empty, "background_commit_id_success"),
+        if(description == "success", "background_commit_id_warning"),
         "background_commit_id_error",
       )')"
       for alias in background_commit_id_running background_commit_id_error background_commit_id_warning background_commit_id_success; do
