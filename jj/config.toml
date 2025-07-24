@@ -15,11 +15,14 @@ log-graph-prioritize = "::trunk()"
 [revset-aliases]
 stage = 'mutable() & subject(exact:"[stage]")'
 staged = '::stage-'
-log_targets = '(immutable_heads() | ((root()..immutable_heads())::).. & committer_date(after:"40 minutes ago")).. | present(@) | present(pr_heads) | (bookmarks() ~ present(trunk()))'
+log_targets = '(mutable() ~ background_commits()) | present(@) | present(pr_heads) | (bookmarks() ~ present(trunk()))'
 #interesting = 'log_targets | present(trunk())..present(@) | fork_point(present(@)|present(trunk()))'
 interesting = 'log_targets | @-'
 trivial_working_copy = 'working_copies() & empty() & description(exact:"") & visible_heads() & ~merges()'
 "immutable_heads()" = "tags() | remote_bookmarks()"
+"successful_background_commits()" = "mutable() & description(regex:'\nbackground-state: success\n')"
+"running_background_commits()" = "mutable() & description(regex:'\nbackground-state: running\n')"
+"background_commits()" = "mutable() & description(regex:'\nbackground-state: [^\n]*\n')"
 
 [aliases]
 pr = ["util", "exec", "--", "bash", "-c", """
@@ -192,7 +195,6 @@ action="${1:-<unspecified>}"
 
 case "${action}" in
   run)
-    set -x
     revision="${2}"
     commit_ids="$(jj log --no-graph --revisions "${revision}" --template "commit_id ++ ' '")"
     parent_dir="$(jj config get background.parent_directory)"
@@ -212,23 +214,15 @@ case "${action}" in
       jj --quiet workspace add "${workspace_dir}" --name="background-${workspace_id}" --revision "${commit_id}" --sparse-patterns empty
       cd "${workspace_dir}"
       log_file="${workspace_parent_dir}/background.log"
-      jj --quiet describe --message "running\n\nbackground-log: ${log_file}"
-      jj --quiet background associate "${commit_id}" @
-      jj --quiet abandon
-      jj --quiet new 'root()' --message "squash of commit ${commit_id}"
-      jj --quiet restore --from "${commit_id}"
-      jj --quiet new --message "background"
+      jj --quiet describe --message "background\n\nbackground-state: running\nbackground-base:${commit_id}\nbackground-log: ${log_file}"
       bash -Eeuo pipefail <<'EOF_async' 2>&1 | ts -i >"${log_file}" &
         command="$(jj config get background.default-command)"
-        jj --quiet describe --message "running\n\n${command}\n\n$(jj log --no-graph --revisions @ --template "trailers")"
         jj sparse reset
         bash -Eeuo pipefail -c "${command}" 2>&1 && exit_code="${?}" || exit_code="${?}"
+        jj workspace update-stale
         archive_dir="${archives_dir}/$(jj log --no-graph --revisions @ --template "commit_id")"
-        jj describe --message "$([ "${exit_code}" = "0" ] && echo "success" || echo "failure")\n\n${command}\n\nbackground-log: ${archive_dir}/background.log\nbackground-archive-dir: ${workspace_dir}"
-        background_commit_id="$(jj log --no-graph --revisions @ --template commit_id)"
-        jj --ignore-working-copy --quiet abandon "..@"
-        jj --ignore-working-copy background associate "${commit_id}" "${background_commit_id}"
-        jj --ignore-working-copy workspace forget
+        jj describe --message "background\n\n${command}\n\nbackground-state: $([ "${exit_code}" = "0" ] && echo "success" || echo "failure")\nbackground-base:${commit_id}\nbackground-log: ${archive_dir}/background.log\nbackground-archive-dir: ${workspace_dir}"
+        jj workspace forget
         mv "${workspace_parent_dir}" "${archive_dir}"
         echo "Finished async script in ${SECONDS} seconds"
 EOF_async
@@ -236,39 +230,19 @@ EOF_async
   ;;
   show)
     revision="${2}"
-    jj show "$(jj log --no-graph --revisions "${revision}" --template "background_commit_id(self)")"
+    jj show "${revision}+ & background_commits()"
   ;;
   squash)
     revision="${2}"
-    jj squash --use-destination-message --from "$(jj log --no-graph --revisions "${revision}" --template "background_commit_id(self)")" --into "${revision}"
+    jj squash --use-destination-message --revision "${revision}+ & background_commits()"
   ;;
   log)
     revision="${2}"
-    cat "$(jj log --no-graph --revisions "$(jj log --no-graph --revisions "${revision}" --template "background_commit_id(self)")" --template 'trailers.filter(|trailer| trailer.key() == "background-log").map(|trailer| trailer.value())')"
+    cat "$(jj log --no-graph --revisions "${revision}+ & background_commits()" --template 'trailers.filter(|trailer| trailer.key() == "background-log").map(|trailer| trailer.value())')"
   ;;
   archive)
     revision="${2}"
-    echo "$(jj log --no-graph --revisions "$(jj log --no-graph --revisions "${revision}" --template "background_commit_id(self)")" --template 'trailsers.filter(|trailer| trailer.key() == "background-archive-dir").map(|trailer| trailer.value())')"
-  ;;
-  associate)
-    # Ignores working copy
-    export commit_id="$(jj --ignore-working-copy log --no-graph --revisions "${2}" --template "commit_id")"
-    export background_commit_id="$(jj --ignore-working-copy log --no-graph --revisions "${3}" --template "commit_id")"
-    parent_dir="$(jj --ignore-working-copy config get background.parent_directory)"
-    repo_name="$(jj --ignore-working-copy config get background.repo-name)"
-    repo_dir="${parent_dir}/${repo_name}"
-    repo_lockfile="${repo_dir}/lockfile"
-    lockf -t 30 "${repo_lockfile}" bash -Eeuo pipefail <<'EOF_lockf'
-      selected_alias="$(jj --ignore-working-copy log --no-graph --revisions "${background_commit_id}" --template 'coalesce(
-        if(!hidden, "background_commit_id_running"),
-        if(description == "success" && empty, "background_commit_id_success"),
-        if(description == "success", "background_commit_id_warning"),
-        "background_commit_id_error",
-      )')"
-      for alias in background_commit_id_running background_commit_id_error background_commit_id_warning background_commit_id_success; do
-        jj --ignore-working-copy config set --repo "template-aliases.'${alias}(commit)'" "'coalesce($(jj --ignore-working-copy log --no-graph --revisions "all()" --template "if('${alias}' == '${selected_alias}' && (stringify(${alias}(self)) != '' || self.contained_in('${commit_id}')) || '${alias}' != '${selected_alias}' && stringify(${alias}(self)) != '' && !self.contained_in('${commit_id}'),'if(commit.contained_in(\\\"' ++ commit_id ++ '\\\"), \\\"' ++ if(self.contained_in('${commit_id}'), '${background_commit_id}', ${alias}(self)) ++ '\\\"),')"))'"
-      done
-EOF_lockf
+    echo "$(jj log --no-graph --revisions "${revision}+ & background_commits()" --template 'trailers.filter(|trailer| trailer.key() == "background-archive-dir").map(|trailer| trailer.value())')"
   ;;
   *)
     echo "Unsupported action: \"${action}\""
@@ -313,10 +287,10 @@ label(
           if(hidden, format_short_commit_id(commit_id), format_short_change_id_with_hidden_and_divergent_info(self)),
           if(conflict, label("conflict", "conflict")),
           coalesce(
-            if(stringify(background_commit_id_success(self)) != "", label("success", "✔")),
-            if(stringify(background_commit_id_warning(self)) != "", label("warning", "⚠")),
-            if(stringify(background_commit_id_running(self)) != "", label("running", "⇌")),
-            if(stringify(background_commit_id_error(self)) != "", label("error", "✘")),
+            if(self.contained_in("(successful_background_commits() & empty())-"), label("success", "✔")),
+            if(self.contained_in("successful_background_commits()-"), label("warning", "⚠")),
+            if(self.contained_in("running_background_commits()-"), label("running", "⇌")),
+            if(self.contained_in("background_commits()-"), label("error", "✘")),
           ),
           if(
             !mine,
@@ -374,18 +348,6 @@ if(
   ),
 )
 '''
-'background_commit_id(commit)' = '''
-  coalesce(
-    background_commit_id_error(commit),
-    background_commit_id_warning(commit),
-    background_commit_id_running(commit),
-    background_commit_id_success(commit),
-  )
-'''
-'background_commit_id_success(commit)' = '""'
-'background_commit_id_warning(commit)' = '""'
-'background_commit_id_error(commit)' = '""'
-'background_commit_id_running(commit)' = '""'
 'format_pr_metadata(commit)' = '""'
 'format_pr_metadata(commit, branch, number, draft, title, conflicting, failed_checks, pending_checks, reviewers)' = '''
 if(
