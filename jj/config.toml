@@ -15,11 +15,10 @@ log-graph-prioritize = "::trunk()"
 [revset-aliases]
 stage = 'mutable() & subject(exact:"[stage]")'
 staged = '::stage-'
-log_targets = '(mutable() ~ background_commits()) | present(@) | present(pr_heads) | (bookmarks() ~ present(trunk()))'
+log_targets = '((immutable() | remote_bookmarks()).. ~ trivial_working_copy ~ background_commits()) | present(@) | present(pr_heads) | (bookmarks() ~ present(trunk()))'
 #interesting = 'log_targets | present(trunk())..present(@) | fork_point(present(@)|present(trunk()))'
 interesting = 'log_targets | @-'
 trivial_working_copy = 'working_copies() & empty() & description(exact:"") & visible_heads() & ~merges()'
-"immutable_heads()" = "tags() | remote_bookmarks()"
 "successful_background_commits()" = "mutable() & description(regex:'\nbackground-state: success\n')"
 "running_background_commits()" = "mutable() & description(regex:'\nbackground-state: running\n')"
 "background_commits()" = "mutable() & description(regex:'\nbackground-state: [^\n]*\n')"
@@ -31,7 +30,7 @@ set -Eeuo pipefail
 action="${1:-}"
 
 get_bookmark() {
-  jj log --no-graph -r "${1}" --template "remote_bookmarks.filter(|bookmark| bookmark.remote() == \\"origin\\").map(|bookmark| bookmark.name())"
+  jj log --no-graph -r "${1}" --template "bookmarks.map(|bookmark| bookmark.name())"
 }
 
 case "${action}" in
@@ -47,19 +46,12 @@ case "${action}" in
     jj pr sync
   ;;
   update)
-    current_pr_head="${2}"
-    new_pr_head="${3}"
-    bookmark="$(get_bookmark "${current_pr_head}")"
+    revision="${2}"
+    bookmark="$(get_bookmark "${revision}")"
     if [ -z "${bookmark}" ]; then
-      echo "Invalid PR commit: ${current_pr_head}"
+      echo "Invalid PR commit: ${revision}"
       exit 1
     fi
-    commits_without_descriptions="$(jj log --no-graph --revisions "${bookmark}..${new_pr_head} & description(exact:'')" --template 'change_id.shortest() ++ " "')"
-    if [ -n "${commits_without_descriptions}" ]; then
-      echo "Add a description to these commits: ${commits_without_descriptions}"
-      exit 1
-    fi
-    jj bookmark move "${bookmark}" --to "${new_pr_head}"
     jj git push --bookmark "${bookmark}"
     jj pr sync
   ;;
@@ -266,7 +258,7 @@ coalesce(
       if(self.contained_in('::present(trunk())'), "◆"),
       if(immutable, "◇"),
       if(conflict, "×"),
-      if(self.contained_in("::stage"), "●"),
+      if(self.contained_in('::bookmarks()'), "●"),
       "○",
     )
   )
