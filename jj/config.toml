@@ -40,9 +40,26 @@ case "${action}" in
   ;;
   new)
     revision="${2:-@}"
+    if [ "$(jj log --no-graph --revisions "${revision}" --template '"."')" != "." ]; then
+      echo "Selected more than one revision"
+    fi
+    if [ -n "$(get_bookmark "${revision}")" ]; then
+      echo "Selected revision already has bookmark"
+      exit 1
+    fi
     bookmark="$(jj log --no-graph --revisions "${revision}" --template "description.first_line().lower()" | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')"
+    base_bookmark="$(get_bookmark "${revision}-")"
+    if [ -z "${base_bookmark}" ]; then
+      if [ "$(jj log --no-graph --revisions "(${revision})- & ::trunk()" --template '"."')" = "."]; then
+      if [ "$(jj log --no-graph --revisions "(${revision})- & ::trunk()" --template '"."')" = "." ]; then
+        base_bookmark="$(get_bookmark "trunk()")"
+      else
+        echo "Could not infer base branch"
+        exit 1
+      fi
+    fi
     jj --config "templates.git_push_bookmark='\\\"${bookmark}\\\"'" git push --change "${revision}"
-    (cd "$(jj git root)" && gh pr create --base "$(gh pr list --author @me --json headRefName --jq '.[].headRefName' | fzf --prompt "base > " --print-query | tail -1)" --head "${bookmark}")
+    (cd "$(jj git root)" && gh pr create --base "${base_bookmark}" --head "${bookmark}")
     jj pr sync
   ;;
   update)
