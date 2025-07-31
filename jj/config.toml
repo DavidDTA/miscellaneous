@@ -370,9 +370,9 @@ if(
 )
 '''
 'format_pr_metadata(commit)' = '""'
-'format_pr_metadata(commit, branch, number, draft, title, conflicting, failed_checks, pending_checks, reviewers)' = '''
+'format_pr_metadata(commit, head, number, draft, title, conflicting, failed_checks, pending_checks, reviewers)' = '''
 if(
-  commit.remote_bookmarks().filter(|bookmark| bookmark.remote() == "origin" && bookmark.name() == branch),
+  commit.remote_bookmarks().filter(|bookmark| bookmark.remote() == "origin" && bookmark.name() == head),
   separate(
     " ",
     label(separate(" ", "pull-request", if(draft, "draft")), "#" ++ number),
