@@ -83,6 +83,7 @@ case "${action}" in
   ;;
   sync)
     jj git fetch --quiet
+    jj git export
     (
       cd "$(jj git root)" &&
       {
