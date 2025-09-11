@@ -15,7 +15,7 @@ log-graph-prioritize = "::trunk()"
 [revset-aliases]
 stage = 'mutable() & subject(exact:"[stage]")'
 staged = '::stage-'
-log_targets = '((immutable() | remote_bookmarks()).. ~ trivial_working_copy ~ background_commits()) | present(@) | present(pr_heads) | (bookmarks() ~ present(trunk()))'
+log_targets = '(immutable().. ~ trivial_working_copy) | present(@) | present(pr_heads) | (bookmarks() ~ present(trunk()))'
 #interesting = 'log_targets | present(trunk())..present(@) | fork_point(present(@)|present(trunk()))'
 interesting = 'log_targets | @-'
 trivial_working_copy = 'working_copies() & empty() & description(exact:"") & visible_heads() & ~merges()'
@@ -466,16 +466,8 @@ set -Eeuo pipefail
 # Features:
 # * Show the default jj log
 # * Remove (elided revisions) from the log graph, as a workaround for https://github.com/jj-vcs/jj/issues/5830
-# * Perform a pr sync every time. If it has been more than 10 minutes since the last sync, perform the sync before showing the graph; otherwise do the sync afterward
 
-update_first=$(( $(date '+%s') - $(jj config get 'pr.last-updated' 2>/dev/null || echo 0) > 600))
-if [ "${update_first}" = "1" ]; then
-  jj pr sync
-fi
 jj log --template custom_log --color always | sed 's/(elided revisions)//'
-if [ "${update_first}" = "0" ]; then
-  jj pr sync
-fi
 """, ""]
 show-diff-stats = true
 log-word-wrap = true
