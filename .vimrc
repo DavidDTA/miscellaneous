@@ -6,6 +6,7 @@ set noswapfile
 set list
 set listchars=extends:>,precedes:<
 set errorformat=%f:%o:%l:%c:%e:%k:%m
+set autoread
 
 nnoremap j gj
 nnoremap k gk
@@ -16,7 +17,7 @@ nnoremap <Tab> :cclose<Bar>cn<Return>
 nnoremap <S-Tab> :cclose<Bar>cp<Return>
 " https://stackoverflow.com/q/11198382#comment122398806_63162084
 nnoremap <expr> <Space> empty(filter(getwininfo(), 'v:val.quickfix')) ? empty(getqflist()) ? '' : ':%bd<Bar>:copen<Bar>bd#<Return>' : ':cc<Bar>cclose<Return>'
-nnoremap <Esc> :w<Bar>cexpr system('type -p quickfix >/dev/null && quickfix')<Return><Return>
+nnoremap <Esc> :w<Bar>cexpr system('type -p quickfix >/dev/null && quickfix && type -p format >/dev/null && format >/dev/null')<Return><Return>:checktime<Return>
 
 autocmd Filetype python setlocal tabstop=4 shiftwidth=4 expandtab autoindent
 autocmd Filetype elm setlocal tabstop=4 shiftwidth=4 expandtab autoindent
