@@ -39,6 +39,7 @@
 
   environment.sessionVariables = {
     EDITOR = "vim";
+    SHELL = "bash";
   };
 
   # android-integration.termux-open.enable = true;
