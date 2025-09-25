@@ -4,14 +4,19 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    home-manager = {
+      url = "github:nix-community/home-manager/release-24.11";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     nix-on-droid = {
       url = "github:nix-community/nix-on-droid/master";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
     };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nix-on-droid }:
+  outputs = { self, nixpkgs, nixpkgs-unstable, nix-on-droid, home-manager }:
     let
       system = "aarch64-linux";
       unstable-overlay = final: prev: with import nixpkgs-unstable {

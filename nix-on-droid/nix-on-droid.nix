@@ -15,7 +15,6 @@
     openssh
     ps
     tmux
-    vim
 
     # Some common stuff that people expect to have
     #procps
@@ -40,6 +39,17 @@
   environment.sessionVariables = {
     EDITOR = "vim";
     SHELL = "bash";
+  };
+
+  home-manager.useGlobalPkgs = true;
+  home-manager.config = {pkgs, ... }: {
+    home.stateVersion = "24.05";
+    programs.vim = {
+      enable = true;
+      plugins = with pkgs.vimPlugins; [
+      ];
+      extraConfig = builtins.readFile(../.vimrc);
+    };
   };
 
   # android-integration.termux-open.enable = true;
