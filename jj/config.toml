@@ -33,6 +33,15 @@ get_bookmark() {
   jj log --no-graph -r "${1}" --template "bookmarks.map(|bookmark| bookmark.name())"
 }
 
+confirm() {
+  if [ "$({ echo Yes; echo No; } | fzf --height=2 --layout=reverse --no-separator --info=hidden --no-input)" = "Yes" ]; then
+    echo Yes
+  else
+    echo No
+    exit 1
+  fi
+}
+
 case "${action}" in
   list)
     jj pr sync
@@ -68,6 +77,9 @@ case "${action}" in
       echo "Invalid PR commit: ${revision}"
       exit 1
     fi
+    jj interdiff --from "${bookmark}" --to "${bookmark}@origin"
+    echo "Would you like to continue?"
+    confirm
     jj git push --bookmark "${bookmark}"
     jj pr sync
   ;;
