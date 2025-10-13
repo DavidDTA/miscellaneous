@@ -50,7 +50,6 @@ case "${action}" in
     bookmark="$(jj log --no-graph --revisions "${revision}" --template "description.first_line().lower()" | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')"
     base_bookmark="$(get_bookmark "${revision}-")"
     if [ -z "${base_bookmark}" ]; then
-      if [ "$(jj log --no-graph --revisions "(${revision})- & ::trunk()" --template '"."')" = "."]; then
       if [ "$(jj log --no-graph --revisions "(${revision})- & ::trunk()" --template '"."')" = "." ]; then
         base_bookmark="$(get_bookmark "trunk()")"
       else
