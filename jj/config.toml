@@ -77,7 +77,7 @@ case "${action}" in
       echo "Invalid PR commit: ${revision}"
       exit 1
     fi
-    jj interdiff --from "${bookmark}" --to "${bookmark}@origin"
+    jj interdiff --from "${bookmark@origin}" --to "${bookmark}"
     echo "Would you like to continue?"
     confirm
     jj git push --bookmark "${bookmark}"
