@@ -42,6 +42,10 @@ confirm() {
   fi
 }
 
+input() {
+  : | fzf --height=1 --no-separator --info=hidden --prompt="${1:-}> " --print-query
+}
+
 case "${action}" in
   list)
     jj pr sync
@@ -55,6 +59,11 @@ case "${action}" in
     if [ -n "$(get_bookmark "${revision}")" ]; then
       echo "Selected revision already has bookmark"
       exit 1
+    fi
+    jj show "${revision}"
+    confirm
+    if [ -z "$(jj log --no-graph --revisions "${revision}" --template "description")" ]; then
+      jj describe -r "${revision}" -m "$(input "Commit message")"
     fi
     bookmark="$(jj log --no-graph --revisions "${revision}" --template "description.first_line().lower()" | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')"
     base_bookmark="$(get_bookmark "${revision}-")"
