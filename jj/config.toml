@@ -69,15 +69,13 @@ case "${action}" in
       jj describe -r "${revision}" -m "${description}"
     fi
     bookmark="$(jj log --no-graph --revisions "${revision}" --template "description.first_line().lower()" | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')"
-    base_bookmark="$(get_bookmark "${revision}-")"
+    echo "Select base:"
+    base_bookmark="$(jj log --revisions "fork_point((${2}) | trunk()) | fork_point((${2}) | trunk()):: & bookmarks()" --template 'local_bookmarks.map(|bookmark| bookmark.name())' | grep -v '(elided revisions)' | fzf --layout=reverse --no-separator --info=hidden --delimiter='^[^a-zA-Z0-9-]*' --accept-nth)" --height=~100%
     if [ -z "${base_bookmark}" ]; then
-      if [ "$(jj log --no-graph --revisions "(${revision})- & ::trunk()" --template '"."')" = "." ]; then
-        base_bookmark="$(get_bookmark "trunk()")"
-      else
-        echo "Could not infer base branch"
-        exit 1
-      fi
+      echo "No bookmark selected"
+      exit 1
     fi
+    echo base_bookmark
     jj --config "templates.git_push_bookmark='\\\"${bookmark}\\\"'" git push --change "${revision}"
     (cd "$(jj git root)" && gh pr create --base "${base_bookmark}" --head "${bookmark}")
     jj pr sync
