@@ -63,8 +63,10 @@ case "${action}" in
     fi
     jj show "${revision}"
     confirm
-    if [ -z "$(jj log --no-graph --revisions "${revision}" --template "description")" ]; then
-      jj describe -r "${revision}" -m "$(input "Commit message")"
+    description="$(jj log --no-graph --revisions "${revision}" --template "description")"
+    if [ -z "${description}" ]; then
+      description="$(input "Commit message")"
+      jj describe -r "${revision}" -m "${description}"
     fi
     bookmark="$(jj log --no-graph --revisions "${revision}" --template "description.first_line().lower()" | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')"
     base_bookmark="$(get_bookmark "${revision}-")"
