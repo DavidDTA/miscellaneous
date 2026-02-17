@@ -34,6 +34,7 @@ get_bookmark() {
 }
 
 confirm() {
+  echo "Continue?"
   if [ "$({ echo Yes; echo No; } | fzf --height=2 --layout=reverse --no-separator --info=hidden --no-input)" = "Yes" ]; then
     echo Yes
   else
