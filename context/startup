@@ -1,0 +1,51 @@
+#! /bin/bash
+set -Eeuo pipefail
+
+script_path="$(realpath $0)"
+
+data_dir="${XDG_DATA_HOME:-$HOME/.local/share}/dev.dta.context/context.yaml"
+
+
+if [ -z "${DTA_STARTED_WITH_LAUNCHD-}" ]; then
+  plist_file="${HOME}/Library/LaunchAgents/dev.dta.context.plist"
+  if [ -n "$(launchctl list | sed 's/^[^\t]*\t[^\t]*\t//' | { grep '^dev.dta.context$' || true; })" ]; then
+    launchctl unload "${plist_file}"
+  fi
+  /opt/homebrew/bin/python3 "$(dirname "${0}")/checkin.py" "${data_dir}" --unattest 2>&1 >/tmp/dev.dta.context.out
+  cat >"${plist_file}" <<EOF 
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.dta.context</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>${script_path}</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>DTA_STARTED_WITH_LAUNCHD</key>
+    <string>1</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StartInterval</key>
+  <integer>5</integer>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/dev.dta.context.out</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/dev.dta.context.out</string>
+</dict>
+</plist>
+EOF
+  launchctl load "${plist_file}"
+  exit
+fi
+
+/opt/homebrew/bin/python3 "$(dirname "${0}")/checkin.py" "${data_dir}"
