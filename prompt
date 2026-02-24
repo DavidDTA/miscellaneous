@@ -21,7 +21,7 @@ print_stat() {
 if git_status="$(git status --porcelain 2>/dev/null)"; then
   remote="origin"
   repo="$(basename $(git config --get remote.${remote}.url) .git)"
-  reference_commit=$(git show-ref --verify -s "refs/remotes/$remote/HEAD")
+  reference_commit=$(jj log --no-graph --revisions 'trunk()' --template 'commit_id' || git show-ref --verify -s "refs/remotes/$remote/HEAD")
   current_branch="$(git branch --show-current)"
   upstream_commit="$(git rev-parse --verify $current_branch@{upstream} 2>/dev/null || echo $reference_commit)"
   root="$(git rev-parse --show-toplevel)"
