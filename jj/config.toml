@@ -70,12 +70,12 @@ case "${action}" in
     fi
     bookmark="$(jj log --no-graph --revisions "${revision}" --template "description.first_line().lower()" | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')"
     echo "Select base:"
-    base_bookmark="$(jj log --revisions "fork_point((${2}) | trunk()) | fork_point((${2}) | trunk()):: & bookmarks()" --template 'local_bookmarks.map(|bookmark| bookmark.name())' | grep -v '(elided revisions)' | fzf --layout=reverse --no-separator --info=hidden --delimiter='^[^a-zA-Z0-9-]*' --accept-nth)" --height=~100%
+    base_bookmark="$(jj log --no-graph --revisions "fork_point((${2}) | trunk()):: & bookmarks()" --template 'local_bookmarks.map(|bookmark| bookmark.name())' | fzf --layout=reverse --no-separator --info=hidden --height=~8)"
     if [ -z "${base_bookmark}" ]; then
       echo "No bookmark selected"
       exit 1
     fi
-    echo base_bookmark
+    echo "${base_bookmark}"
     jj --config "templates.git_push_bookmark='\\\"${bookmark}\\\"'" git push --change "${revision}"
     (cd "$(jj git root)" && gh pr create --base "${base_bookmark}" --head "${bookmark}" --fill --web)
     jj pr sync
