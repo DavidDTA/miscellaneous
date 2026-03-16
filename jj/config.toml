@@ -47,6 +47,10 @@ input() {
   : | fzf --height=1 --no-separator --info=hidden --prompt="${1:-}> " --print-query
 }
 
+choose() {
+  fzf --no-separator --info=hidden --height=~8
+}
+
 case "${action}" in
   list)
     jj pr sync
@@ -70,7 +74,7 @@ case "${action}" in
     fi
     bookmark="$(jj log --no-graph --revisions "${revision}" --template "description.first_line().lower()" | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')"
     echo "Select base:"
-    base_bookmark="$(jj log --no-graph --revisions "fork_point((${2}) | trunk()):: & bookmarks()" --template 'local_bookmarks.map(|bookmark| bookmark.name())' | fzf --layout=reverse --no-separator --info=hidden --height=~8)"
+    base_bookmark="$(jj log --no-graph --revisions "fork_point((${2}) | trunk()):: & bookmarks()" --template 'local_bookmarks.map(|bookmark| bookmark.name())' | choose)"
     if [ -z "${base_bookmark}" ]; then
       echo "No bookmark selected"
       exit 1
@@ -81,7 +85,11 @@ case "${action}" in
     jj pr sync
   ;;
   update)
-    revision="${2}"
+    if [ -n "${var+x}" ]; then
+      revision="${2}"
+    else
+      revision="$(jj log --no-graph --revisions 'trunk()..@ & bookmarks()' --template 'local_bookmarks.map(|bookmark| if(bookmark.synced(),"",bookmark.name() ++ "\n"))' | choose)"
+    fi
     bookmark="$(get_bookmark "${revision}")"
     if [ -z "${bookmark}" ]; then
       echo "Invalid PR commit: ${revision}"
@@ -315,7 +323,7 @@ label(
         self.contained_in("interesting"),
         separate(
           " ",
-          if(hidden, format_short_commit_id(commit_id), format_short_change_id_with_hidden_and_divergent_info(self)),
+          if(hidden, format_short_commit_id(commit_id), format_short_change_id_with_change_offset(self)),
           if(conflict, label("conflict", "conflict")),
           coalesce(
             if(self.contained_in("(successful_background_commits() & empty())-"), label("success", "✔")),
