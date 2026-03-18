@@ -74,7 +74,7 @@ case "${action}" in
     fi
     bookmark="$(jj log --no-graph --revisions "${revision}" --template "description.first_line().lower()" | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')"
     echo "Select base:"
-    base_bookmark="$(jj log --no-graph --revisions "fork_point((${2}) | trunk()):: & bookmarks()" --template 'local_bookmarks.map(|bookmark| bookmark.name())' | choose)"
+    base_bookmark="$(jj log --no-graph --revisions "fork_point((${2}) | trunk()):: & bookmarks()" --template 'local_bookmarks.map(|bookmark| bookmark.name() ++ "\n")' | choose)"
     if [ -z "${base_bookmark}" ]; then
       echo "No bookmark selected"
       exit 1
