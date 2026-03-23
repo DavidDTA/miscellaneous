@@ -14,7 +14,7 @@ log-graph-prioritize = "::trunk()"
 
 [revset-aliases]
 stage = 'mutable() & subject(exact:"[stage]")'
-staged = '::stage-'
+staged = 'immutable_heads()..stage-'
 log_targets = '(immutable().. ~ trivial_working_copy) | present(@) | present(pr_heads) | (bookmarks() ~ present(trunk()))'
 #interesting = 'log_targets | present(trunk())..present(@) | fork_point(present(@)|present(trunk()))'
 interesting = 'log_targets | @-'
@@ -211,21 +211,13 @@ jj simplify-parents -r stage
 """, ""]
 stage = ["util", "exec", "--", "bash", "-c", """
 set -Eeuo pipefail
-revision="${1:-@}"
-jj rebase -s stage -d "all:stage- | heads(${1})"
+revisions="${1:-@}"
+jj rebase --revisions "(${revisions}) & stage.." --after 'trunk()' --before 'exactly(stage, 1)'
 """, ""]
 unstage = ["util", "exec", "--", "bash", "-c", """
 set -Eeuo pipefail
-revision="${1:-@}"
-jj rebase -s stage -d "all:stage- ~ (${1})"
-""", ""]
-staged = ["util", "exec", "--", "bash", "-c", """
-set -Eeuo pipefail
-jj log -r 'mutable() & staged' --template custom_log --color always | sed 's/(elided revisions)//'
-""", ""]
-unstaged = ["util", "exec", "--", "bash", "-c", """
-set -Eeuo pipefail
-jj log -r 'ancestors(mutable() ~ ::stage ~ trivial_working_copy, 2)' --template 'separate("\n", custom_log, log_diff_stats)' --color always | sed 's/(elided revisions)//'
+revisions="${1:-@}"
+jj rebase --revisions "${revisions} & ::stage" --after "exactly(stage, 1)"
 """, ""]
 background = ["util", "exec", "--", "bash", "-c", """
 set -Eeuo pipefail
