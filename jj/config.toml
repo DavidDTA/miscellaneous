@@ -44,7 +44,7 @@ confirm() {
 }
 
 input() {
-  : | fzf --height=1 --no-separator --info=hidden --prompt="${1:-}> " --print-query
+  : | { fzf --height=1 --no-separator --info=hidden --prompt="${1:-}> " --print-query || true; }
 }
 
 choose() {
