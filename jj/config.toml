@@ -85,7 +85,7 @@ case "${action}" in
     jj pr sync
   ;;
   update)
-    if [ -n "${var+x}" ]; then
+    if [ -n "${2+x}" ]; then
       revision="${2}"
     else
       revision="$(jj log --no-graph --revisions 'trunk()..@ & bookmarks()' --template 'local_bookmarks.map(|bookmark| if(bookmark.synced(),"",bookmark.name() ++ "\n"))' | choose)"
