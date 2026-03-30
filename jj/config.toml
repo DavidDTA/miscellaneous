@@ -298,7 +298,8 @@ coalesce(
       if(immutable, "◇"),
       if(conflict, "×"),
       if(self.contained_in('::bookmarks()'), "●"),
-      "○",
+      if(self.contained_in('staged'), "○"),
+      "◌",
     )
   )
 )
