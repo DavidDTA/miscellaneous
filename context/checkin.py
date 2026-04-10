@@ -203,4 +203,4 @@ if __name__ == '__main__':
   parser.add_argument('datafile')
   parser.add_argument('--unattest', action='store_true')
   args = parser.parse_args()
-  main(**vars(args))
+  #main(**vars(args))
