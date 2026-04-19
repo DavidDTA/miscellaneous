@@ -8,6 +8,8 @@ set listchars=extends:>,precedes:<
 set errorformat=%f:%o:%l:%c:%e:%k:%m
 set autoread
 
+inoremap <Tab> <C-n>
+
 nnoremap j gj
 nnoremap k gk
 nnoremap <Down> gj
