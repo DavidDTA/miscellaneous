@@ -48,7 +48,7 @@
       enable = true;
       plugins = with pkgs.vimPlugins; [
       ];
-      extraConfig = builtins.readFile(../.vimrc);
+      extraConfig = builtins.readFile(./.vimrc);
     };
   };
 
