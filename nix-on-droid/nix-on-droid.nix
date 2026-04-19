@@ -5,7 +5,6 @@
   environment.packages = with pkgs; [
     bash
     curl
-    direnv
     findutils
     git
     gnugrep
@@ -44,6 +43,16 @@
   home-manager.useGlobalPkgs = true;
   home-manager.config = {pkgs, ... }: {
     home.stateVersion = "24.05";
+    programs.bash = {
+      enable = true;
+      bashrcExtra = ''
+        PS1='$(${./prompt} "\001" "\002")'
+        trap 'SECONDS_START=''${SECONDS_START:-$SECONDS}' DEBUG
+        PROMPT_COMMAND='if [[ "$?" != "0" ]] || [[ $(($SECONDS - ''${SECONDS_START:-$SECONDS})) > 3 ]]; then echo -n -e "\07"; fi; history -a; unset SECONDS_START'
+        HISTTIMEFORMAT='%Y-%m-%d %T '
+        eval "$(${pkgs.direnv}/bin/direnv hook bash)"
+      '';
+    };
     programs.vim = {
       enable = true;
       plugins = with pkgs.vimPlugins; [
