@@ -48,7 +48,6 @@
           pkgs.writeShellApplication {
             name = "prompt";
             runtimeInputs = with pkgs; [
-              git
               jujutsu
             ];
             text = builtins.readFile(./prompt);
