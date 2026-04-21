@@ -30,31 +30,31 @@ print_stat() {
 }
 if git_status="$(git status --porcelain 2>/dev/null)"; then
   remote="origin"
-  repo="$(basename $(git config --get remote.${remote}.url) .git)"
+  repo="$(basename "$(git config --get "remote.${remote}.url")" .git)"
   reference_commit=$(jj log --no-graph --revisions 'trunk()' --template 'commit_id' || git show-ref --verify -s "refs/remotes/$remote/HEAD")
   current_branch="$(git branch --show-current)"
-  upstream_commit="$(git rev-parse --verify $current_branch@{upstream} 2>/dev/null || echo $reference_commit)"
+  upstream_commit="$(git rev-parse --verify "$current_branch@{upstream}" 2>/dev/null || echo "$reference_commit")"
   root="$(git rev-parse --show-toplevel)"
   path="${PWD/#${root}}"
   path=${path/#\//>}
   current_commit=$(git rev-parse --verify HEAD | tr -d "\n")
-  current_mergecount=$(git rev-list ${current_commit} ^${upstream_commit} ^${reference_commit} --count | tr -d "\n")
-  upstream_mergecount=$(git rev-list ${upstream_commit} ^${reference_commit} --count | tr -d "\n")
-  current_behind=$(git rev-list ${upstream_commit} ^${reference_commit} ^${current_commit}  --count | tr -d "\n")
-  upstream_behind=$(git rev-list ${reference_commit} ^${upstream_commit} --count | tr -d "\n")
+  current_mergecount=$(git rev-list "${current_commit}" "^${upstream_commit}" "^${reference_commit}" --count | tr -d "\n")
+  upstream_mergecount=$(git rev-list "${upstream_commit}" "^${reference_commit}" --count | tr -d "\n")
+  current_behind=$(git rev-list "${upstream_commit}" "^${reference_commit}" "^${current_commit}"  --count | tr -d "\n")
+  upstream_behind=$(git rev-list "${reference_commit}" "^${upstream_commit}" --count | tr -d "\n")
 
   prompt_color "32m" "$repo"
-  print_stat "*" "21" $(git branch -l | grep -v '^\*' | wc -l) # branches
-  print_stat "*" "55" $(git stash list | wc -l | tr -d " \n") # stashes
+  print_stat "*" "21" "$(git branch -l | grep -cv '^\*')" # branches
+  print_stat "*" "55" "$(git stash list | wc -l | tr -d " \n")" # stashes
   echo -ne ">"
   prompt_color "38;5;45m" "${current_branch:-$(git for-each-ref --points-at HEAD --format "%(refname:short)" | paste -sd , -)(detached)}"
   print_stat "^" "142" "$upstream_behind"
   print_stat "*" "142" "$upstream_mergecount" # commits from reference to upstream
   print_stat "^" "214" "$current_behind"
   print_stat "*" "214" "$current_mergecount" # commits from upstream to HEAD
-  print_stat "*" "202" $(<<<"${git_status}" grep '^[A-Z].' | wc -l) # modified files in index
-  print_stat "*" "196" $(<<<"${git_status}" grep '^.[A-Z]' | wc -l) # modified files locally
-  print_stat "*" "201" $(<<<"${git_status}" grep '^??' | wc -l) # new files
+  print_stat "*" "202" "$(<<<"${git_status}" grep -c '^[A-Z].')" # modified files in index
+  print_stat "*" "196" "$(<<<"${git_status}" grep -c '^.[A-Z]')" # modified files locally
+  print_stat "*" "201" "$(<<<"${git_status}" grep -c '^??')" # new files
   echo -ne "$path"
 
   # commits from reference to pr base branch
