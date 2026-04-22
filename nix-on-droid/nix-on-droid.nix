@@ -63,6 +63,14 @@
           eval "$(${pkgs.direnv}/bin/direnv hook bash)"
         '';
       };
+    programs.jujutsu = {
+      enable = true;
+      settings = {
+        git = {
+          executable-path = "${pkgs.git}/bin/git";
+        };
+      };
+    };
     programs.vim = {
       enable = true;
       plugins = with pkgs.vimPlugins; [
