@@ -60,9 +60,13 @@
           trap 'SECONDS_START=''${SECONDS_START:-$SECONDS}' DEBUG
           PROMPT_COMMAND='if [[ "$?" != "0" ]] || [[ $(($SECONDS - ''${SECONDS_START:-$SECONDS})) > 3 ]]; then echo -n -e "\07"; fi; history -a; unset SECONDS_START'
           HISTTIMEFORMAT='%Y-%m-%d %T '
-          eval "$(${pkgs.direnv}/bin/direnv hook bash)"
         '';
       };
+    programs.direnv = {
+      enable = true;
+      enableBashIntegration = true;
+      nix-direnv.enable = true;
+    };
     programs.jujutsu = {
       enable = true;
       settings = {
