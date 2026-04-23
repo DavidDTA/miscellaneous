@@ -109,7 +109,7 @@ case "${action}" in
       echo "Invalid PR commit: ${revision}"
       exit 1
     fi
-    (cd "$(jj git root)" && gh pr view --web "${bookmark}")
+    (cd "$(jj git root)" && open -na 'Google Chrome' --args "$(gh pr view "${bookmark}" --json url --jq .url)" --new-window)
   ;;
   sync)
     jj git fetch --quiet
