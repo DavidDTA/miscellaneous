@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, localpkgs, ... }:
 
 {
   # Simply install just the packages
@@ -43,20 +43,10 @@
   home-manager.config = {pkgs, ... }: {
     home.stateVersion = "24.05";
     programs.bash =
-      let
-        prompt =
-          pkgs.writeShellApplication {
-            name = "prompt";
-            runtimeInputs = with pkgs; [
-              jujutsu
-            ];
-            text = builtins.readFile(./prompt);
-          };
-      in
       {
         enable = true;
         bashrcExtra = ''
-          PS1='$(${prompt}/bin/prompt "\001" "\002")'
+          PS1='$(${localpkgs.prompt}/bin/prompt "\001" "\002")'
           trap 'SECONDS_START=''${SECONDS_START:-$SECONDS}' DEBUG
           PROMPT_COMMAND='if [[ "$?" != "0" ]] || [[ $(($SECONDS - ''${SECONDS_START:-$SECONDS})) > 3 ]]; then echo -n -e "\07"; fi; history -a; unset SECONDS_START'
           HISTTIMEFORMAT='%Y-%m-%d %T '
@@ -79,7 +69,7 @@
       enable = true;
       plugins = with pkgs.vimPlugins; [
       ];
-      extraConfig = builtins.readFile(./.vimrc);
+      extraConfig = builtins.readFile(./config/.vimrc);
     };
   };
 
