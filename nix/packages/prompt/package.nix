@@ -1,7 +1,11 @@
 
-{ jujutsu, writeShellApplication }:
+{ coreutils, jujutsu, writeShellApplication }:
   writeShellApplication {
     name = "prompt";
-    runtimeInputs =  [ jujutsu ];
+    inheritPath = false;
+    runtimeInputs =  [
+      coreutils
+      jujutsu
+    ];
     text = builtins.readFile(./prompt);
   }
