@@ -41,10 +41,6 @@ if workspace_root="$(jj workspace root 2>/dev/null)"; then
   print_stat "*" "196" "$(jj log --no-graph --template 'self.diff().files().len()' --revisions '@')" # modified files in working copy
   echo -ne "$path"
 
-  # commits from reference to pr base branch
-  # commits from pr base branch to pr head
-  # How far ahead is reference? PR base?
-
 else
   echo -ne "$PWD";
 fi
