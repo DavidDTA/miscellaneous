@@ -7,6 +7,7 @@
     curl
     findutils
     gnugrep
+    gnused
     jq
     jujutsu
     moreutils
