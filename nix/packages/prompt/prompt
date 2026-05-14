@@ -34,7 +34,7 @@ if workspace_root="$(jj workspace root 2>/dev/null)"; then
   path=${path/#\//>}
 
   prompt_color "32m" "$repo"
-  print_stat "*" "21" "$(("$(jj workspace list --template '"."' | wc -c)" - 1))" # Other workspaces
+  print_stat "*" "21" "$(jj workspace list --template '"."' | sed 's/^.//' | wc -c)" # Other workspaces
   print_stat "*" "55" "$(jj log --no-graph --template '"."' --revisions 'working_copies()..mutable()' | wc -c)" # Mutable commits outside of workspaces
   echo -ne ">"
   print_stat "*" "142" "$(jj log --no-graph --template '"."' --revisions '::@- & mutable()' | wc -c)" # mutable commits in working branch

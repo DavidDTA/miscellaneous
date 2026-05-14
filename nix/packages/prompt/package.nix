@@ -6,6 +6,7 @@
     runtimeInputs =  [
       coreutils
       jujutsu
+      gnused
     ];
     text = builtins.readFile(./prompt);
   }
