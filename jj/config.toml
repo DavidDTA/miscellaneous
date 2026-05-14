@@ -24,187 +24,6 @@ trivial_working_copy = 'working_copies() & empty() & description(exact:"") & vis
 "background_commits()" = "mutable() & description(regex:'\nbackground-state: [^\n]*\n')"
 
 [aliases]
-pr = ["util", "exec", "--", "bash", "-c", """
-set -Eeuo pipefail
-
-action="${1:-}"
-
-get_bookmark() {
-  jj log --no-graph -r "${1}" --template "bookmarks.map(|bookmark| bookmark.name())"
-}
-
-confirm() {
-  echo "Continue?"
-  if [ "$({ echo Yes; echo No; } | fzf --height=2 --layout=reverse --no-separator --info=hidden --no-input)" = "Yes" ]; then
-    echo Yes
-  else
-    echo No
-    exit 1
-  fi
-}
-
-input() {
-  : | { fzf --height=1 --no-separator --info=hidden --prompt="${1:-}> " --print-query || true; }
-}
-
-choose() {
-  fzf --no-separator --info=hidden --height=~8
-}
-
-case "${action}" in
-  list)
-    jj pr sync
-    jj log --no-graph --revisions pr_heads --template 'custom_log ++ "\n"'
-  ;;
-  new)
-    revision="${2:-@}"
-    if [ "$(jj log --no-graph --revisions "${revision}" --template '"."')" != "." ]; then
-      echo "Selected more than one revision"
-    fi
-    if [ -n "$(get_bookmark "${revision}")" ]; then
-      echo "Selected revision already has bookmark"
-      exit 1
-    fi
-    jj show "${revision}"
-    confirm
-    description="$(jj log --no-graph --revisions "${revision}" --template "description")"
-    if [ -z "${description}" ]; then
-      description="$(input "Commit message")"
-      jj describe -r "${revision}" -m "${description}"
-    fi
-    bookmark="$(jj log --no-graph --revisions "${revision}" --template "description.first_line().lower()" | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')"
-    echo "Select base:"
-    base_bookmark="$(jj log --no-graph --revisions "fork_point((${revision}) | trunk()):: & (bookmarks() | trunk())" --template 'bookmarks.map(|bookmark| bookmark.name() ++ "\n")' | choose)"
-    if [ -z "${base_bookmark}" ]; then
-      echo "No bookmark selected"
-      exit 1
-    fi
-    echo "${base_bookmark}"
-    jj --config "templates.git_push_bookmark='\\\"${bookmark}\\\"'" git push --change "${revision}"
-    jj git export
-    (cd "$(jj git root)" && gh pr create --base "${base_bookmark}" --head "${bookmark}" --fill --web)
-    jj pr sync
-  ;;
-  update)
-    if [ -n "${2+x}" ]; then
-      revision="${2}"
-    else
-      revision="$(jj log --no-graph --revisions 'trunk()..@ & bookmarks()' --template 'local_bookmarks.map(|bookmark| if(bookmark.synced(),"",bookmark.name() ++ "\n"))' | choose)"
-    fi
-    bookmark="$(get_bookmark "${revision}")"
-    if [ -z "${bookmark}" ]; then
-      echo "Invalid PR commit: ${revision}"
-      exit 1
-    fi
-    jj interdiff --from "${bookmark}@origin" --to "${bookmark}"
-    echo "Would you like to continue?"
-    confirm
-    jj git push --bookmark "${bookmark}"
-    jj pr sync
-  ;;
-  open)
-    revision="${2:-@}"
-    bookmark="$(get_bookmark "${revision}")"
-    if [ -z "${bookmark}" ]; then
-      echo "Invalid PR commit: ${revision}"
-      exit 1
-    fi
-    (cd "$(jj git root)" && open -na 'Google Chrome' --args "$(gh pr view "${bookmark}" --json url --jq .url)" --new-window)
-  ;;
-  sync)
-    jj git fetch --quiet
-    jj git export
-    (
-      cd "$(jj git root)" &&
-      {
-          gh pr list --author DavidDTA --json number,headRefName,isDraft,title,statusCheckRollup,reviewRequests,assignees,mergeable |
-          jq --raw-output "$(cat <<'EOF_jq'
-            "jj config set --repo 'revset-aliases.pr_heads' " +
-            ([ .[].headRefName + "@origin", "none()" ] | join(" | ") | @sh),
-            "jj config set --repo 'template-aliases.\\"format_pr_metadata(commit)\\"' " +
-            (
-              "coalesce(" +
-              (
-                [
-                  .[] |
-                  "format_pr_metadata(" +
-                  (
-                    [
-                      "commit",
-                      (.headRefName | @json),
-                      (.number | @json),
-                      (.isDraft | @json),
-                      (.title | @json),
-                      (.mergeable == "CONFLICTING" | @json),
-                      (
-                        [
-                          .statusCheckRollup[] |
-                          (
-                            select(.__typename == "CheckRun" and .status == "COMPLETED" and .conclusion == "FAILURE") |
-                            .name
-                          ),
-                          (
-                            select(.__typename == "StatusContext" and .state == "FAILURE") |
-                            .context
-                          )
-                        ] |
-                        join(" ") |
-                        @json
-                      ),
-                      (
-                        [
-                          .statusCheckRollup[] |
-                          (
-                            select(.__typename == "CheckRun" and (.status != "COMPLETED" or (.conclusion != "FAILURE" and .conclusion != "NEUTRAL" and .conclusion != "SUCCESS"))) |
-                            .name
-                          ),
-                          (
-                            select(.__typename == "StatusContext" and .state != "FAILURE" and .state != "SUCCESS") |
-                            .context
-                          )
-                        ] |
-                        join(" ") |
-                        @json
-                      ),
-                      (
-                        [.assignees[].login, .reviewRequests[].login] |
-                        unique |
-                        join(" ") | 
-                        @json
-                      )
-                    ] |
-                    join(", ")
-                  ) +
-                  ")"
-                ] |
-                join(", ")
-              ) +
-              ")" |
-              @json |
-              @sh
-            ),
-            (
-              .[] |
-              "[ \\"$(jj bookmark list --remote origin --tracked --revisions " +
-              (.headRefName | @sh) +
-              "@origin --template 'if(tracked && name == \\"" +
-              (.headRefName | @sh) +
-              "\\" && remote == \\"origin\\", \\"true\\")')\\" = \\"true\\" ] || jj bookmark track " +
-              (.headRefName | @sh) +
-              "@origin --quiet"
-            )
-EOF_jq
-          )" |
-          bash
-        }
-      )
-      jj config set --repo "pr.last-updated" "$(date '+%s')"
-  ;;
-  *)
-    echo "Unsupported action: \"${action}\""
-  ;;
-esac
-""", ""]
 restack = ["util", "exec", "--", "bash", "-c", """
 set -Eeuo pipefail
 jj rebase -s 'all:(::trunk())+ & mutable() ~ merges()' -d 'trunk()'
@@ -336,13 +155,10 @@ label(
               ),
             ),
           ),
-          coalesce(
-            format_pr_metadata(self),
-            if(
-              description,
-              description.first_line(),
-              label(if(empty, "empty"), description_placeholder),
-            ),
+          if(
+            description,
+            description.first_line(),
+            label(if(empty, "empty"), description_placeholder),
           ),
         ),
       ),
@@ -378,21 +194,6 @@ if(
     if(total_added != 0, label("diff added", concat("+", total_added))),
     if(total_added != 0 && total_removed != 0, "/"),
     if(total_removed != 0, label("diff removed", concat("-", total_removed))),
-  ),
-)
-'''
-'format_pr_metadata(commit)' = '""'
-'format_pr_metadata(commit, head, number, draft, title, conflicting, failed_checks, pending_checks, reviewers)' = '''
-if(
-  commit.remote_bookmarks().filter(|bookmark| bookmark.remote() == "origin" && bookmark.name() == head),
-  separate(
-    " ",
-    label(separate(" ", "pull-request", if(draft, "draft")), "#" ++ number),
-    title,
-    if(conflicting, label("conflict", "conflict")),
-    label("error", failed_checks),
-    label("warning", pending_checks),
-    label("reviewer", reviewers),
   ),
 )
 '''
