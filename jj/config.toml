@@ -296,6 +296,8 @@ jj log --template custom_log --color always | sed 's/(elided revisions)//'
 show-diff-stats = true
 log-word-wrap = true
 merge-editor = "vscode"
+conflict-marker-style = "git"
+
 
 [background]
 parent_directory = "/var/folders/l_/sd5rhzx92fq8fctqpqv15vvw0000gp/T/tmp.5Pev8WbRa9"
