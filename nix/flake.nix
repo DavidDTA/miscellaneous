@@ -60,7 +60,7 @@
           pkgs = pkgs;
           modules = [ ./nix-on-droid.nix ];
           extraSpecialArgs = {
-            localpkgs = packages.${pkgs.stdenv.hostPlatform.system};
+            localpkgs = packages.${pkgs.system};
           };
         };
       };
