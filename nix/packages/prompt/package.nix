@@ -1,5 +1,5 @@
 
-{ coreutils, jujutsu, writeShellApplication }:
+{ coreutils, gnused, jujutsu, writeShellApplication }:
   writeShellApplication {
     name = "prompt";
     inheritPath = false;
