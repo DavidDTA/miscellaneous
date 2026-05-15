@@ -69,11 +69,13 @@
     in
       {
         packages = packages;
-        nixOnDroidConfigurations.default = nix-on-droid.lib.nixOnDroidConfiguration {
-          pkgs = pkgs;
-          modules = [ ./nix-on-droid.nix ];
-          extraSpecialArgs = {
-            localpkgs = packages.${pkgs.stdenv.hostPlatform.system};
+        lib = {
+          mkNixOnDroidConfiguration = {}: nix-on-droid.lib.nixOnDroidConfiguration {
+            pkgs = pkgs;
+            modules = [ ./nix-on-droid.nix ];
+            extraSpecialArgs = {
+              localpkgs = packages.${pkgs.stdenv.hostPlatform.system};
+            };
           };
         };
       };
