@@ -16,7 +16,7 @@
 
   outputs = { self, nixpkgs-stable, nixpkgs-unstable, nix-on-droid, home-manager }:
     let
-      systems = ["x86_64-linux" "aarch64-linux"];
+      systems = pkgs.lib.systems.flakeExposed;
       overlay = final: prev: 
         let
           # The default unpack hook sometimes fails here:
