@@ -18,48 +18,7 @@
     let
       overlay = final: prev: {
         vimPlugins = prev.vimPlugins // {
-          vim-sensible = lib.addUnpackFallback(prev.vimPlugins.vim-sensible);
-        };
-      };
-      lib = {
-        addUnpackFallback =
-          let
-            # The default unpack hook sometimes fails here:
-            # https://github.com/NixOS/nixpkgs/blob/6d7ec06d6868ac6d94c371458fc2391ded9ff13d/pkgs/stdenv/generic/setup.sh#L1256
-            # with:
-            # cp: setting permissions for 'source': No such file or directory
-            # It is unclear why, but this workaround produces the same end result
-            # We apply it surgically instead of in stdenv directly in order to avoid needing to rebuild everything
-            unpackFallback = pkgs.makeSetupHook { name = "unpack-fallback"; } (pkgs.writeText "unpack-fallback.sh" ''
-              _unpackFallback() {
-                local fn="$1"
-           
-                if [ ! -d "$fn" ]; then
-                  return 1
-                fi
-           
-                local destination="$(stripHash "$fn")"
-                if [ -e "$destination" ]; then
-                  echo "Cannot copy $fn to $destination: destination already exists!"
-                  return 1
-                fi
-           
-                mkdir "$destination"
-                cp -r --preserve=timestamps --reflink=auto -- "$fn"/* "$destination"
-              }
-           
-              unpackCmdHooks+=(_unpackFallback)
-            '');
-          in
-          pkg: pkg.overrideAttrs(old: {
-            nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ unpackFallback ];
-          });
-        mkNixOnDroidConfiguration = {}: nix-on-droid.lib.nixOnDroidConfiguration {
-          pkgs = pkgs;
-          modules = [ ./nix-on-droid.nix ];
-          extraSpecialArgs = {
-            localpkgs = self.packages { nixpkgs = pkgs; };
-          };
+          vim-sensible = self.lib.addUnpackFallback(prev.vimPlugins.vim-sensible);
         };
       };
       pkgs = import nixpkgs-unstable {
@@ -67,7 +26,47 @@
       };
     in
       {
-        lib = lib;
+        lib = {
+          addUnpackFallback =
+            let
+              # The default unpack hook sometimes fails here:
+              # https://github.com/NixOS/nixpkgs/blob/6d7ec06d6868ac6d94c371458fc2391ded9ff13d/pkgs/stdenv/generic/setup.sh#L1256
+              # with:
+              # cp: setting permissions for 'source': No such file or directory
+              # It is unclear why, but this workaround produces the same end result
+              # We apply it surgically instead of in stdenv directly in order to avoid needing to rebuild everything
+              unpackFallback = pkgs.makeSetupHook { name = "unpack-fallback"; } (pkgs.writeText "unpack-fallback.sh" ''
+                _unpackFallback() {
+                  local fn="$1"
+             
+                  if [ ! -d "$fn" ]; then
+                    return 1
+                  fi
+             
+                  local destination="$(stripHash "$fn")"
+                  if [ -e "$destination" ]; then
+                    echo "Cannot copy $fn to $destination: destination already exists!"
+                    return 1
+                  fi
+             
+                  mkdir "$destination"
+                  cp -r --preserve=timestamps --reflink=auto -- "$fn"/* "$destination"
+                }
+             
+                unpackCmdHooks+=(_unpackFallback)
+              '');
+            in
+            pkg: pkg.overrideAttrs(old: {
+              nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ unpackFallback ];
+            });
+          mkNixOnDroidConfiguration = {}: nix-on-droid.lib.nixOnDroidConfiguration {
+            pkgs = pkgs;
+            modules = [ ./nix-on-droid.nix ];
+            extraSpecialArgs = {
+              localpkgs = self.packages { nixpkgs = pkgs; };
+            };
+          };
+        };
         packages = { nixpkgs }:
           builtins.mapAttrs
             (dirname: _: nixpkgs.callPackage ./packages/${dirname}/package.nix { })
