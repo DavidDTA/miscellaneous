@@ -58,20 +58,19 @@
           pkgs = pkgs;
           modules = [ ./nix-on-droid.nix ];
           extraSpecialArgs = {
-            localpkgs = packages;
+            localpkgs = self.packages { nixpkgs = pkgs; };
           };
         };
       };
-      packages =
-        builtins.mapAttrs
-          (dirname: _: pkgs.callPackage ./packages/${dirname}/package.nix { })
-          (builtins.readDir ./packages);
       pkgs = import nixpkgs-unstable {
         overlays = [ overlay ];
       };
     in
       {
         lib = lib;
-        packages = packages;
+        packages = { nixpkgs }:
+          builtins.mapAttrs
+            (dirname: _: nixpkgs.callPackage ./packages/${dirname}/package.nix { })
+            (builtins.readDir ./packages);
       };
 }
