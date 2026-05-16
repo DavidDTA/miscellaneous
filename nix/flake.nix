@@ -16,13 +16,14 @@
 
   outputs = { self, nixpkgs-stable, nixpkgs-unstable, nix-on-droid, home-manager }:
     let
-      overlay = final: prev: {
-        vimPlugins = prev.vimPlugins // {
-          vim-sensible = self.lib.addUnpackFallback(prev.vimPlugins.vim-sensible);
-        };
-      };
       pkgs = import nixpkgs-unstable {
-        overlays = [ overlay ];
+        overlays = [
+          (final: prev: {
+            vimPlugins = prev.vimPlugins // {
+              vim-sensible = self.lib.addUnpackFallback(prev.vimPlugins.vim-sensible);
+            };
+          })
+        ];
       };
     in
       {
