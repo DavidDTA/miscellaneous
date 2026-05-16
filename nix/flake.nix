@@ -16,9 +16,7 @@
 
   outputs = { self, nixpkgs-stable, nixpkgs-unstable, nix-on-droid, home-manager }:
     let
-      systems = pkgs.lib.systems.flakeExposed;
-      overlay = final: prev: 
-        {
+      overlay = final: prev: {
         vimPlugins = prev.vimPlugins // {
           vim-sensible = lib.addUnpackFallback(prev.vimPlugins.vim-sensible);
         };
@@ -60,19 +58,14 @@
           pkgs = pkgs;
           modules = [ ./nix-on-droid.nix ];
           extraSpecialArgs = {
-            localpkgs = packages.${pkgs.system};
+            localpkgs = packages;
           };
         };
       };
       packages =
-        nixpkgs-unstable.lib.attrsets.genAttrs systems (system:
-          let
-            callPackage = nixpkgs-unstable.legacyPackages.${system}.callPackage;
-          in
-            builtins.mapAttrs
-              (dirname: _: callPackage ./packages/${dirname}/package.nix { })
-              (builtins.readDir ./packages)
-        );
+        builtins.mapAttrs
+          (dirname: _: pkgs.callPackage ./packages/${dirname}/package.nix { })
+          (builtins.readDir ./packages);
       pkgs = import nixpkgs-unstable {
         overlays = [ overlay ];
       };
