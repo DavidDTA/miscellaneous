@@ -15,19 +15,19 @@
   };
 
   outputs = { self, nixpkgs-stable, nixpkgs-unstable, nix-on-droid, home-manager }:
-    let
-      nixpkgs = import nixpkgs-unstable {
-        overlays = [
-          (final: prev: {
-            vimPlugins = prev.vimPlugins // {
-              vim-sensible = self.lib.addUnpackFallback(prev.vimPlugins.vim-sensible);
-            };
-          })
-        ];
-      };
-    in
-      {
-        lib = {
+    {
+      mkLib = {}:
+        let
+          nixpkgs = import nixpkgs-unstable {
+            overlays = [
+              (final: prev: {
+                vimPlugins = prev.vimPlugins // {
+                  vim-sensible = addUnpackFallback(prev.vimPlugins.vim-sensible);
+                };
+              })
+            ];
+          };
+          localpkgs = self.mkPackages { inherit nixpkgs; };
           addUnpackFallback =
             let
               # The default unpack hook sometimes fails here:
@@ -60,17 +60,18 @@
             pkg: pkg.overrideAttrs(old: {
               nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ unpackFallback ];
             });
+        in
+        {
+          inherit addUnpackFallback;
           mkNixOnDroidConfiguration = {}: nix-on-droid.lib.nixOnDroidConfiguration {
             pkgs = nixpkgs;
             modules = [ ./nix-on-droid.nix ];
-            extraSpecialArgs = {
-              localpkgs = self.mkPackages { inherit nixpkgs; };
-            };
+            extraSpecialArgs = { inherit localpkgs; };
           };
         };
-        mkPackages = { nixpkgs }:
-          builtins.mapAttrs
-            (dirname: _: nixpkgs.callPackage ./packages/${dirname}/package.nix { })
-            (builtins.readDir ./packages);
-      };
+      mkPackages = { nixpkgs }:
+        builtins.mapAttrs
+          (dirname: _: nixpkgs.callPackage ./packages/${dirname}/package.nix { })
+          (builtins.readDir ./packages);
+    };
 }
