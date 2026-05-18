@@ -16,7 +16,7 @@
 
   outputs = { self, nixpkgs-stable, nixpkgs-unstable, nix-on-droid, home-manager }:
     let
-      pkgs = import nixpkgs-unstable {
+      nixpkgs = import nixpkgs-unstable {
         overlays = [
           (final: prev: {
             vimPlugins = prev.vimPlugins // {
@@ -36,7 +36,7 @@
               # cp: setting permissions for 'source': No such file or directory
               # It is unclear why, but this workaround produces the same end result
               # We apply it surgically instead of in stdenv directly in order to avoid needing to rebuild everything
-              unpackFallback = pkgs.makeSetupHook { name = "unpack-fallback"; } (pkgs.writeText "unpack-fallback.sh" ''
+              unpackFallback = nixpkgs.makeSetupHook { name = "unpack-fallback"; } (nixpkgs.writeText "unpack-fallback.sh" ''
                 _unpackFallback() {
                   local fn="$1"
              
@@ -61,10 +61,10 @@
               nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ unpackFallback ];
             });
           mkNixOnDroidConfiguration = {}: nix-on-droid.lib.nixOnDroidConfiguration {
-            pkgs = pkgs;
+            pkgs = nixpkgs;
             modules = [ ./nix-on-droid.nix ];
             extraSpecialArgs = {
-              localpkgs = self.packages { nixpkgs = pkgs; };
+              localpkgs = self.packages { inherit nixpkgs; };
             };
           };
         };
