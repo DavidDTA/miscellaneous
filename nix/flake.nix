@@ -64,11 +64,11 @@
             pkgs = nixpkgs;
             modules = [ ./nix-on-droid.nix ];
             extraSpecialArgs = {
-              localpkgs = self.packages { inherit nixpkgs; };
+              localpkgs = self.mkPackages { inherit nixpkgs; };
             };
           };
         };
-        packages = { nixpkgs }:
+        mkPackages = { nixpkgs }:
           builtins.mapAttrs
             (dirname: _: nixpkgs.callPackage ./packages/${dirname}/package.nix { })
             (builtins.readDir ./packages);
