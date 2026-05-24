@@ -1,10 +1,11 @@
 {
   inputs = {
     nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-24.11";
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/88d3861acdd3d2f0e361767018218e51810df8a1";
+    # pinned due to https://github.com/nix-community/nix-on-droid/issues/495
+    nixpkgs-pinned.url = "github:NixOS/nixpkgs/88d3861acdd3d2f0e361767018218e51810df8a1";
     home-manager = {
       url = "github:nix-community/home-manager/release-25.11";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
+      inputs.nixpkgs.follows = "nixpkgs-pinned";
     };
 
     nix-on-droid = {
@@ -14,13 +15,13 @@
     };
   };
 
-  outputs = { self, nixpkgs-stable, nixpkgs-unstable, nix-on-droid, home-manager }:
+  outputs = { self, nixpkgs-stable, nixpkgs-pinned, nix-on-droid, home-manager }:
     {
       mkLib = mkArgs:
         let
           args = if builtins.isFunction mkArgs then mkArgs { inherit nixpkgs miscpkgs lib; } else mkArgs;
 
-          nixpkgs = import nixpkgs-unstable {
+          nixpkgs = import nixpkgs-pinned {
             config = args.nixpkgs.config or {};
             overlays = [
               (final: prev: {
