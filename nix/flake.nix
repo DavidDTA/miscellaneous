@@ -31,7 +31,10 @@
               })
             ] ++ args.nixpkgs.overlays or [];
           };
-          miscpkgs = self.mkPackages { inherit nixpkgs; };
+          miscpkgs = lib.mkPackages {
+            inherit nixpkgs;
+            packages = ./packages;
+          };
           addUnpackFallback =
             let
               # The default unpack hook sometimes fails here:
@@ -73,12 +76,12 @@
               modules = [ ./nix-on-droid.nix ] ++ modules;
               extraSpecialArgs = { inherit miscpkgs; };
             };
+            mkPackages = { nixpkgs, packages }:
+              builtins.mapAttrs
+                (dirname: _: nixpkgs.callPackage "${packages}/${dirname}/package.nix" { })
+                (builtins.readDir packages);
           };
         in
         lib;
-      mkPackages = { nixpkgs }:
-        builtins.mapAttrs
-          (dirname: _: nixpkgs.callPackage ./packages/${dirname}/package.nix { })
-          (builtins.readDir ./packages);
     };
 }
