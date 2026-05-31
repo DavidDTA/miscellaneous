@@ -70,11 +70,12 @@
                   nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ unpackFallback ];
                 });
               mkNixOnDroidConfiguration = {
-                modules ? []
+                modules ? [],
+                extraSpecialArgs ? {}
               }: nix-on-droid.lib.nixOnDroidConfiguration {
                 pkgs = nixpkgs;
                 modules = [ ./nix-on-droid.nix ] ++ modules;
-                extraSpecialArgs = { miscpkgs = self.packages; };
+                extraSpecialArgs = { miscpkgs = self.packages; } // extraSpecialArgs;
               };
               mkPackages = { packages }:
                 builtins.mapAttrs
