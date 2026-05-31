@@ -76,13 +76,12 @@
                 modules = [ ./nix-on-droid.nix ] ++ modules;
                 extraSpecialArgs = { miscpkgs = self.packages; };
               };
-              mkPackages = { nixpkgs, packages }:
+              mkPackages = { packages }:
                 builtins.mapAttrs
                   (dirname: _: nixpkgs.callPackage "${packages}/${dirname}/package.nix" { })
                   (builtins.readDir packages);
             };
             packages = self.lib.mkPackages {
-              inherit nixpkgs;
               packages = ./packages;
             };
           };
