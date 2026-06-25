@@ -1,9 +1,18 @@
 {
   inputs = {
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nix-darwin = {
+      url = "github:nix-darwin/nix-darwin/master";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
+    home-manager = {
+      url = "github:nix-community/home-manager/master";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
     nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-24.11";
     # pinned due to https://github.com/nix-community/nix-on-droid/issues/495
     nixpkgs-pinned.url = "github:NixOS/nixpkgs/88d3861acdd3d2f0e361767018218e51810df8a1";
-    home-manager = {
+    home-manager-pinned = {
       url = "github:nix-community/home-manager/release-25.11";
       inputs.nixpkgs.follows = "nixpkgs-pinned";
     };
@@ -11,11 +20,11 @@
     nix-on-droid = {
       url = "github:nix-community/nix-on-droid/master";
       inputs.nixpkgs.follows = "nixpkgs-stable";
-      inputs.home-manager.follows = "home-manager";
+      inputs.home-manager.follows = "home-manager-pinned";
     };
   };
 
-  outputs = { self, nixpkgs-stable, nixpkgs-pinned, nix-on-droid, home-manager }:
+  outputs = { self, nixpkgs-stable, nixpkgs-pinned, nixpkgs-unstable, nix-darwin, nix-on-droid, home-manager, home-manager-pinned }:
     {
       mkOutputs = mkArgs:
         let
@@ -69,6 +78,14 @@
                 pkg: pkg.overrideAttrs(old: {
                   nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ unpackFallback ];
                 });
+              mkNixDarwinConfiguration = { computername, hostname, username }:
+                nix-darwin.lib.darwinSystem {
+                  specialArgs = { inherit computername hostname username; };
+                  modules = [
+                    ./nix-darwin.nix
+                    home-manager.darwinModules.home-manager
+                  ];
+                };
               mkNixOnDroidConfiguration = {
                 modules ? [],
                 extraSpecialArgs ? {}
