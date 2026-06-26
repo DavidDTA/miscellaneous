@@ -13,8 +13,10 @@
           pkgs.vim
         ];
 
-      home-manager.users.${username} = { config, pkgs, ... }:
+      home-manager.users.${username} = { pkgs, ... }:
         {
+          imports = [ (import ./common.nix) ];
+
           # Home Manager needs a bit of information about you and the
           # paths it should manage.
           home.username = "${username}";

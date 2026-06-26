@@ -91,7 +91,9 @@
                 extraSpecialArgs ? {}
               }: nix-on-droid.lib.nixOnDroidConfiguration {
                 pkgs = nixpkgs;
-                modules = [ ./nix-on-droid.nix ] ++ modules;
+                modules = [
+                  ./nix-on-droid.nix
+                ] ++ modules;
                 extraSpecialArgs = { miscpkgs = self.packages; } // extraSpecialArgs;
               };
               mkPackages = { packages }:

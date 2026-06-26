@@ -1,5 +1,4 @@
 { config, lib, pkgs, miscpkgs, ... }:
-
 {
   # Simply install just the packages
   environment.packages = with pkgs; [
@@ -43,6 +42,7 @@
 
   home-manager.useGlobalPkgs = true;
   home-manager.config = {pkgs, ... }: {
+    imports = [ (import ./common.nix) ];
     home.stateVersion = "24.05";
     programs.bash =
       {
@@ -58,14 +58,6 @@
       enable = true;
       enableBashIntegration = true;
       nix-direnv.enable = true;
-    };
-    programs.jujutsu = {
-      enable = true;
-      settings = {
-        git = {
-          executable-path = "${pkgs.git}/bin/git";
-        };
-      };
     };
     programs.vim = {
       enable = true;
