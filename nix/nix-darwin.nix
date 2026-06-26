@@ -1,4 +1,4 @@
-{ pkgs, computername, hostname, username, ... }: {
+{ pkgs, computername, hostname, useremail, username, ... }: {
 
       users.users.${username}.home = "/Users/${username}";
       networking.hostName = "${hostname}";
@@ -13,6 +13,7 @@
           pkgs.vim
         ];
 
+      home-manager.extraSpecialArgs = { inherit username useremail; };
       home-manager.users.${username} = { pkgs, ... }:
         {
           imports = [ (import ./common.nix) ];

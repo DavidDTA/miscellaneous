@@ -78,9 +78,9 @@
                 pkg: pkg.overrideAttrs(old: {
                   nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ unpackFallback ];
                 });
-              mkNixDarwinConfiguration = { computername, hostname, username }:
+              mkNixDarwinConfiguration = { computername, hostname, useremail, username }:
                 nix-darwin.lib.darwinSystem {
-                  specialArgs = { inherit computername hostname username; };
+                  specialArgs = { inherit computername hostname useremail username; };
                   modules = [
                     ./nix-darwin.nix
                     home-manager.darwinModules.home-manager
