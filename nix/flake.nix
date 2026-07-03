@@ -28,56 +28,8 @@
     {
       mkOutputs = mkArgs:
         let
-          args =
-            if builtins.isFunction mkArgs then
-              mkArgs { inherit nixpkgs self; }
-            else
-              mkArgs;
-
-          nixpkgs = import nixpkgs-pinned {
-            config = args.nixpkgs.config or {};
-            overlays = [
-              (final: prev: {
-                vimPlugins = prev.vimPlugins // {
-                  vim-sensible = self.lib.addUnpackFallback(prev.vimPlugins.vim-sensible);
-                };
-              })
-            ] ++ args.nixpkgs.overlays or [];
-          };
           self = {
             lib = {
-              addUnpackFallback =
-                let
-                  # The default unpack hook sometimes fails here:
-                  # https://github.com/NixOS/nixpkgs/blob/6d7ec06d6868ac6d94c371458fc2391ded9ff13d/pkgs/stdenv/generic/setup.sh#L1256
-                  # with:
-                  # cp: setting permissions for 'source': No such file or directory
-                  # It is unclear why, but this workaround produces the same end result
-                  # We apply it surgically instead of in stdenv directly in order to avoid needing to rebuild everything
-                  unpackFallback = nixpkgs.makeSetupHook { name = "unpack-fallback"; } (nixpkgs.writeText "unpack-fallback.sh" ''
-                    _unpackFallback() {
-                      local fn="$1"
-                 
-                      if [ ! -d "$fn" ]; then
-                        return 1
-                      fi
-                 
-                      local destination="$(stripHash "$fn")"
-                      if [ -e "$destination" ]; then
-                        echo "Cannot copy $fn to $destination: destination already exists!"
-                        return 1
-                      fi
-                 
-                      mkdir "$destination"
-                      cp -r --preserve=timestamps --reflink=auto -- "$fn"/* "$destination"
-                    }
-                 
-                    unpackCmdHooks+=(_unpackFallback)
-                  '');
-                in
-                pkg: pkg.overrideAttrs(old: {
-                  nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ unpackFallback ];
-                });
               mkNixDarwinConfiguration = { computername, hostname, useremail, username }:
                 nix-darwin.lib.darwinSystem {
                   specialArgs = { inherit computername hostname useremail username; };
@@ -88,20 +40,72 @@
                 };
               mkNixOnDroidConfiguration = {
                 modules ? [],
-                extraSpecialArgs ? {}
+                nixpkgs ? {},
+                username,
+                useremail
               }: nix-on-droid.lib.nixOnDroidConfiguration {
-                pkgs = nixpkgs;
+                pkgs = import nixpkgs-pinned {
+                  config = nixpkgs.config or {};
+                  overlays = [
+                    (final: prev: {
+                      addUnpackFallback =
+                        let
+                          # The default unpack hook sometimes fails here:
+                          # https://github.com/NixOS/nixpkgs/blob/6d7ec06d6868ac6d94c371458fc2391ded9ff13d/pkgs/stdenv/generic/setup.sh#L1256
+                          # with:
+                          # cp: setting permissions for 'source': No such file or directory
+                          # It is unclear why, but this workaround produces the same end result
+                          # We apply it surgically instead of in stdenv directly in order to avoid needing to rebuild everything
+                          unpackFallback = final.makeSetupHook { name = "unpack-fallback"; } (final.writeText "unpack-fallback.sh" ''
+                            _unpackFallback() {
+                              local fn="$1"
+                         
+                              if [ ! -d "$fn" ]; then
+                                return 1
+                              fi
+                         
+                              local destination="$(stripHash "$fn")"
+                              if [ -e "$destination" ]; then
+                                echo "Cannot copy $fn to $destination: destination already exists!"
+                                return 1
+                              fi
+                         
+                              mkdir "$destination"
+                              cp -r --preserve=timestamps --reflink=auto -- "$fn"/* "$destination"
+                            }
+                         
+                            unpackCmdHooks+=(_unpackFallback)
+                          '');
+                        in
+                        pkg: pkg.overrideAttrs(old: {
+                          nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ unpackFallback ];
+                        });
+                    })
+                    (final: prev: {
+                      vimPlugins = prev.vimPlugins // {
+                        vim-sensible = final.addUnpackFallback(prev.vimPlugins.vim-sensible);
+                      };
+                    })
+                  ] ++ nixpkgs.overlays or [];
+                };
                 modules = [
+                  ({ pkgs, ... }: {
+                      _module.args.miscpkgs = self.lib.mkPackages {
+                        nixpkgs = pkgs;
+                        packages = ./packages;
+                      };
+                  })
                   ./nix-on-droid.nix
                 ] ++ modules;
-                extraSpecialArgs = { miscpkgs = self.packages; } // extraSpecialArgs;
+                extraSpecialArgs = { inherit username useremail; };
               };
-              mkPackages = { packages }:
+              mkPackages = { nixpkgs, packages }:
                 builtins.mapAttrs
                   (dirname: _: nixpkgs.callPackage "${packages}/${dirname}/package.nix" { })
                   (builtins.readDir packages);
             };
-            packages = self.lib.mkPackages {
+            overlay = final: prev: self.lib.mkPackages {
+              nixpkgs = final;
               packages = ./packages;
             };
           };

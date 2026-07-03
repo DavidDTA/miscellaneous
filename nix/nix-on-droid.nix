@@ -1,4 +1,4 @@
-{ config, lib, pkgs, miscpkgs, ... }:
+{ config, lib, pkgs, miscpkgs, username, useremail, ... }:
 {
   # Simply install just the packages
   environment.packages = with pkgs; [
@@ -41,6 +41,7 @@
   };
 
   home-manager.useGlobalPkgs = true;
+  home-manager.extraSpecialArgs = { inherit username useremail; };
   home-manager.config = {pkgs, ... }: {
     imports = [ (import ./common.nix) ];
     home.stateVersion = "24.05";
