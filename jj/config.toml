@@ -13,6 +13,7 @@ log = '(log_targets | (::immutable_heads() & ancestors(immutable_heads()..log_ta
 log-graph-prioritize = "::trunk()"
 
 [revset-aliases]
+"immutable_heads()" = "builtin_immutable_heads() | (working_copies() ~ @)"
 stage = 'mutable() & subject(exact:"[stage]")'
 staged = 'immutable_heads()..stage-'
 log_targets = '(immutable().. ~ trivial_working_copy) | present(@) | present(pr_heads) | (bookmarks() ~ present(trunk()))'
