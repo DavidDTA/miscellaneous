@@ -10,21 +10,14 @@
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
     nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-24.11";
-    # pinned due to https://github.com/nix-community/nix-on-droid/issues/495
-    nixpkgs-pinned.url = "github:NixOS/nixpkgs/88d3861acdd3d2f0e361767018218e51810df8a1";
-    home-manager-pinned = {
-      url = "github:nix-community/home-manager/release-25.11";
-      inputs.nixpkgs.follows = "nixpkgs-pinned";
-    };
-
     nix-on-droid = {
       url = "github:nix-community/nix-on-droid/master";
       inputs.nixpkgs.follows = "nixpkgs-stable";
-      inputs.home-manager.follows = "home-manager-pinned";
+      inputs.home-manager.follows = "home-manager";
     };
   };
 
-  outputs = { self, nixpkgs-stable, nixpkgs-pinned, nixpkgs-unstable, nix-darwin, nix-on-droid, home-manager, home-manager-pinned }:
+  outputs = { self, nixpkgs-stable, nixpkgs-unstable, nix-darwin, nix-on-droid, home-manager }:
     {
       lib = {
         mkNixDarwinConfiguration = { computername, hostname, useremail, username }:
@@ -41,7 +34,7 @@
           username,
           useremail
         }: nix-on-droid.lib.nixOnDroidConfiguration {
-          pkgs = import nixpkgs-pinned {
+          pkgs = import nixpkgs-unstable {
             config = nixpkgs.config or {};
             overlays = [
               (final: prev: {
