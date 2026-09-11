@@ -9,15 +9,14 @@
       url = "github:nix-community/home-manager/master";
       inputs.nixpkgs.follows = "nixpkgs-unstable";
     };
-    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-24.11";
     nix-on-droid = {
       url = "github:nix-community/nix-on-droid/master";
-      inputs.nixpkgs.follows = "nixpkgs-stable";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
       inputs.home-manager.follows = "home-manager";
     };
   };
 
-  outputs = { self, nixpkgs-stable, nixpkgs-unstable, nix-darwin, nix-on-droid, home-manager }:
+  outputs = { self, nixpkgs-unstable, nix-darwin, nix-on-droid, home-manager }:
     {
       lib = {
         mkNixDarwinConfiguration = { computername, hostname, useremail, username }:
